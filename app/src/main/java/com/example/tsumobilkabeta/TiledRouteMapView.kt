@@ -27,9 +27,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
-/**
- * Tiled map view for large images: decodes only visible region and supports pan/zoom + markers.
- */
 class TiledRouteMapView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -159,7 +156,6 @@ class TiledRouteMapView @JvmOverloads constructor(
             decoder = BitmapRegionDecoder.newInstance(stream, false)
         }
 
-        // Быстрый предпросмотр, чтобы пользователь сразу видел карту до первого тайла.
         resources.openRawResource(resId).use { stream ->
             previewBitmap = BitmapFactory.decodeStream(
                 stream,
@@ -259,7 +255,6 @@ class TiledRouteMapView @JvmOverloads constructor(
             sample = sample,
         )
 
-        // Перед декодом пробуем подтянуть тайл с диска (кэш между открытиями вкладки/экрана).
         tryLoadTileFromDisk(desiredRegion, sample)
 
         if (shouldDecode(desiredRegion, sample) && shouldRequestDecodeNow()) {
@@ -443,7 +438,6 @@ class TiledRouteMapView @JvmOverloads constructor(
                 cachedRect = Rect(request.region)
                 cachedSample = request.sample
                 lastDiskMissKey = null
-                // Когда тайлы готовы, предпросмотр больше не нужен.
                 previewBitmap?.recycle()
                 previewBitmap = null
                 postInvalidateOnAnimation()

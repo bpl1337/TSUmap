@@ -9,10 +9,6 @@ import kotlin.math.roundToInt
 import kotlin.math.hypot
 import kotlin.math.abs
 
-/**
- * Преобразует координаты с пользовательской карты (usermap) на черно-белую карту (walkable)
- * и проверяет проходимость для алгоритма поиска пути.
- */
 class PathFindingCoordinator(
     private val context: Context,
     @DrawableRes private val userMapResId: Int = R.drawable.usermap,
@@ -26,9 +22,6 @@ class PathFindingCoordinator(
     private var walkableMapWidth: Int = 0
     private var walkableMapHeight: Int = 0
 
-    /**
-     * Инициализирует карты. Должен быть вызван один раз при создании.
-     */
     fun initialize() {
         userMapBitmap = BitmapFactory.decodeResource(context.resources, userMapResId)
         walkableMapBitmap = BitmapFactory.decodeResource(context.resources, walkableMapResId)
@@ -39,12 +32,6 @@ class PathFindingCoordinator(
         walkableMapHeight = walkableMapBitmap?.height ?: 1
     }
 
-    /**
-     * Преобразует координаты с пользовательской карты на черно-белую walkable карту.
-     * 
-     * @param userMapPoint точка на пользовательской карте
-     * @return точка на walkable карте, или null если инициализация не выполнена
-     */
     fun convertToWalkableCoordinates(userMapPoint: PointF): PointF? {
         if (userMapWidth <= 0 || userMapHeight <= 0 || walkableMapWidth <= 0 || walkableMapHeight <= 0) {
             return null
@@ -59,13 +46,6 @@ class PathFindingCoordinator(
         return PointF(walkableX, walkableY)
     }
 
-    /**
-     * Проверяет, является ли точка на walkable карте проходимой (белая).
-     * Белый пиксель = проходимо, черный = непроходимо.
-     * 
-     * @param walkablePoint точка на walkable карте
-     * @return true если точка проходима, false если нет или карта не инициализирована
-     */
     fun isWalkableAtPoint(walkablePoint: PointF): Boolean {
         val bitmap = walkableMapBitmap ?: return false
         
@@ -74,32 +54,20 @@ class PathFindingCoordinator(
         
         val pixel = bitmap.getPixel(x, y)
         
-        // Проверяем если пиксель белый (RGB близко к белому)
-        // В черно-белом изображении белый = 0xFFFFFFFF, черный = 0xFF000000
         val red = android.graphics.Color.red(pixel)
         val green = android.graphics.Color.green(pixel)
         val blue = android.graphics.Color.blue(pixel)
         
-        // Если пиксель светлый (белый/серый), то это проходимая область
         val brightness = (red + green + blue) / 3
         return brightness > 128
     }
 
-    /**
-     * Находит ближайшую белую (проходимую) точку к заданной точке на walkable карте.
-     * Ищет в радиусе до maxRadius пикселей.
-     * 
-     * @param walkablePoint точка на walkable карте
-     * @param maxRadius максимальный радиус поиска (по умолчанию 50 пикселей)
-     * @return ближайшая проходимая точка, или исходная точка если ничего не найдено
-     */
     fun findNearestWalkablePoint(walkablePoint: PointF, maxRadius: Int = 50): PointF {
         val bitmap = walkableMapBitmap ?: return walkablePoint
         
         val startX = walkablePoint.x.roundToInt()
         val startY = walkablePoint.y.roundToInt()
         
-        // Если текущая точка уже белая, возвращаем её
         if (isWalkableAtPoint(walkablePoint)) {
             return walkablePoint
         }
@@ -107,23 +75,18 @@ class PathFindingCoordinator(
         var nearestPoint = walkablePoint
         var nearestDistance = Float.MAX_VALUE
         
-        // Ищем в квадрате вокруг точки, начиная с малого радиуса
         for (radius in 1..maxRadius) {
-            // Проходим по границе квадрата с текущим радиусом
             for (dx in -radius..radius) {
                 for (dy in -radius..radius) {
-                    // Проверяем только пиксели на границе радиуса для оптимизации
                     if (abs(dx) != radius && abs(dy) != radius) continue
                     
                     val x = startX + dx
                     val y = startY + dy
                     
-                    // Проверяем границы
                     if (x < 0 || x >= bitmap.width || y < 0 || y >= bitmap.height) continue
                     
                     val testPoint = PointF(x.toFloat(), y.toFloat())
                     
-                    // Если точка белая, проверяем расстояние
                     if (isWalkableAtPoint(testPoint)) {
                         val distance = hypot(
                             (x - startX).toFloat(),
@@ -138,7 +101,6 @@ class PathFindingCoordinator(
                 }
             }
             
-            // Если нашли точку, можно закончить (это будет ближайшая в этом радиусе)
             if (nearestDistance != Float.MAX_VALUE) {
                 break
             }
@@ -147,28 +109,14 @@ class PathFindingCoordinator(
         return nearestPoint
     }
 
-    /**
-     * Преобразует точку с usermap на walkable и снапит её к ближайшей белой точке.
-     * 
-     * @param userMapPoint точка на пользовательской карте
-     * @return снапленная точка на walkable карте, или null если инициализация не выполнена
-     */
     fun snapUserPointToWalkable(userMapPoint: PointF): PointF? {
         val walkablePoint = convertToWalkableCoordinates(userMapPoint) ?: return null
         return findNearestWalkablePoint(walkablePoint)
     }
 
-    /**
-     * Преобразует точку с usermap на walkable, снапит её к ближайшей белой точке,
-     * и преобразует обратно на usermap.
-     * 
-     * @param userMapPoint точка на пользовательской карте
-     * @return снапленная точка обратно на usermap
-     */
     fun snapPointAndConvertBack(userMapPoint: PointF): PointF {
         val snappedWalkable = snapUserPointToWalkable(userMapPoint) ?: return userMapPoint
         
-        // Преобразуем обратно на usermap
         val scaleX = userMapWidth.toFloat() / walkableMapWidth
         val scaleY = userMapHeight.toFloat() / walkableMapHeight
         
@@ -178,19 +126,10 @@ class PathFindingCoordinator(
         )
     }
 
-    /**
-     * Обрабатывает две точки с пользовательской карты:
-     * преобразует их на walkable и проверяет проходимость.
-     * 
-     * @param startPoint точка начала на пользовательской карте
-     * @param endPoint точка конца на пользовательской карте
-     * @return данные для алгоритма A*, или null если один из пунктов непроходим
-     */
     fun processPathRequest(startPoint: PointF, endPoint: PointF): PathFindingData? {
         val walkableStart = convertToWalkableCoordinates(startPoint) ?: return null
         val walkableEnd = convertToWalkableCoordinates(endPoint) ?: return null
 
-        // Логирование для отладки
         val startWalkable = isWalkableAtPoint(walkableStart)
         val endWalkable = isWalkableAtPoint(walkableEnd)
         android.util.Log.d("PathFinding", """
@@ -198,7 +137,6 @@ class PathFindingCoordinator(
             |End point walkable check: $endWalkable at (${walkableEnd.x.toInt()}, ${walkableEnd.y.toInt()})
         """.trimMargin())
 
-        // Проверяем что обе точки находятся на проходимых местах
         if (!startWalkable || !endWalkable) {
             return null
         }
@@ -213,10 +151,6 @@ class PathFindingCoordinator(
         )
     }
 
-    /**
-     * Обрабатывает точки без "магнита" в UI:
-     * пользовательские точки остаются как выбраны, снап применяется только к walkable-координатам.
-     */
     fun processPathRequestWithAutoSnap(
         startPoint: PointF,
         endPoint: PointF,
@@ -264,20 +198,10 @@ class PathFindingCoordinator(
         )
     }
 
-    /**
-     * Обрабатывает две уже снапленные точки и гарантирует их проходимость.
-     * Используется когда точки уже приведены к ближайшей белой области.
-     * 
-     * @param startPoint снапленная точка начала на пользовательской карте
-     * @param endPoint снапленная точка конца на пользовательской карте  
-     * @return данные для алгоритма A*
-     */
     fun processPreSnappedPathRequest(startPoint: PointF, endPoint: PointF): PathFindingData? {
         val walkableStart = convertToWalkableCoordinates(startPoint) ?: return null
         val walkableEnd = convertToWalkableCoordinates(endPoint) ?: return null
 
-        // Если точки после преобразования не совсем белые (из-за округления), 
-        // снапим их ещё раз для гарантии
         val finalWalkableStart = if (!isWalkableAtPoint(walkableStart)) {
             findNearestWalkablePoint(walkableStart, maxRadius = 3)
         } else {
@@ -306,9 +230,6 @@ class PathFindingCoordinator(
         )
     }
 
-    /**
-     * Получает цвет пикселя на walkable карте (для отладки).
-     */
     fun getWalkablePixelColor(walkablePoint: PointF): Int {
         val bitmap = walkableMapBitmap ?: return 0
         val x = walkablePoint.x.roundToInt().coerceIn(0, bitmap.width - 1)
@@ -316,9 +237,6 @@ class PathFindingCoordinator(
         return bitmap.getPixel(x, y)
     }
 
-    /**
-     * Освобождает ресурсы.
-     */
     fun release() {
         userMapBitmap?.recycle()
         walkableMapBitmap?.recycle()
@@ -327,23 +245,12 @@ class PathFindingCoordinator(
     }
 }
 
-/**
- * Данные для передачи алгоритму A*.
- * Содержит исходные координаты с пользовательской карты 
- * и преобразованные координаты для walkable карты.
- */
 data class PathFindingData(
-    /** Точка начала на пользовательской карте */
     val startPoint: PointF,
-    /** Точка конца на пользовательской карте */
     val endPoint: PointF,
-    /** Точка начала на walkable карте (для алгоритма) */
     val walkableStart: PointF,
-    /** Точка конца на walkable карте (для алгоритма) */
     val walkableEnd: PointF,
-    /** Ширина walkable карты */
     val walkableMapWidth: Int,
-    /** Высота walkable карты */
     val walkableMapHeight: Int,
 )
 
