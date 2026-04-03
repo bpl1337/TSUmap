@@ -28,6 +28,7 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 yandexmaps = { module = "com.yandex.android:maps.mobile", version.ref = "yandex-maps" }
 
 androidx-compose-material3-adaptive-navigation-suite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite" }
+androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

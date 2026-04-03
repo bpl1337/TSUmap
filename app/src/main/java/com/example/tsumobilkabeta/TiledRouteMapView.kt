@@ -9,12 +9,16 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.Rect
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import androidx.core.graphics.toColorInt
+import java.io.File
+import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.ceil
@@ -23,9 +27,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
-/**
- * Tiled map view for large images: decodes only visible region and supports pan/zoom + markers.
- */
 class TiledRouteMapView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -35,6 +36,10 @@ class TiledRouteMapView @JvmOverloads constructor(
         val START_COLOR = "#2E7D32".toColorInt()
         val END_COLOR = "#C62828".toColorInt()
         const val IDLE_REDRAW_DELAY_MS = 110L
+        const val INTERACTION_DECODE_THROTTLE_MS = 40L
+        const val PREVIEW_IN_SAMPLE_SIZE = 8
+        const val TILE_DISK_CACHE_DIR = "map_tile_cache"
+        const val TILE_DISK_CACHE_MAX_BYTES = 96L * 1024L * 1024L
     }
 
     private data class DecodeRequest(
@@ -71,6 +76,11 @@ class TiledRouteMapView @JvmOverloads constructor(
     private var cachedRect: Rect? = null
     private var cachedSample: Int = 1
     private var pendingRequest: DecodeRequest? = null
+    private var previewBitmap: Bitmap? = null
+    private var lastDecodeRequestAtMs: Long = 0L
+    private var currentMapResId: Int = 0
+    private var lastDiskMissKey: String? = null
+    private val diskCacheLock = Any()
 
     private val decoderExecutor = Executors.newSingleThreadExecutor()
     private val decoderGeneration = AtomicInteger(0)
@@ -140,14 +150,27 @@ class TiledRouteMapView @JvmOverloads constructor(
 
     fun setMapImageResource(resId: Int) {
         recycleDecoder()
+        currentMapResId = resId
         resources.openRawResource(resId).use { stream ->
             @Suppress("DEPRECATION")
             decoder = BitmapRegionDecoder.newInstance(stream, false)
         }
 
+        resources.openRawResource(resId).use { stream ->
+            previewBitmap = BitmapFactory.decodeStream(
+                stream,
+                null,
+                BitmapFactory.Options().apply {
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                    inSampleSize = PREVIEW_IN_SAMPLE_SIZE
+                },
+            )
+        }
+
         mapWidth = decoder?.width ?: 1
         mapHeight = decoder?.height ?: 1
         resetToFit()
+        warmupInitialTile()
         invalidate()
     }
 
@@ -186,6 +209,7 @@ class TiledRouteMapView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         resetToFit()
+        warmupInitialTile()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -212,6 +236,8 @@ class TiledRouteMapView @JvmOverloads constructor(
         val currentDecoder = decoder ?: return
         if (width <= 0 || height <= 0) return
 
+        drawPreview(canvas)
+
         val srcLeft = max(0f, -offsetX / scale)
         val srcTop = max(0f, -offsetY / scale)
         val srcRight = min(mapWidth.toFloat(), (width - offsetX) / scale)
@@ -229,7 +255,9 @@ class TiledRouteMapView @JvmOverloads constructor(
             sample = sample,
         )
 
-        if (shouldDecode(desiredRegion, sample)) {
+        tryLoadTileFromDisk(desiredRegion, sample)
+
+        if (shouldDecode(desiredRegion, sample) && shouldRequestDecodeNow()) {
             requestDecode(currentDecoder, desiredRegion, sample)
         }
 
@@ -241,6 +269,123 @@ class TiledRouteMapView @JvmOverloads constructor(
         val dstBottom = offsetY + tileRect.bottom * scale
 
         canvas.drawBitmap(tile, null, Rect(dstLeft.toInt(), dstTop.toInt(), dstRight.toInt(), dstBottom.toInt()), null)
+    }
+
+    private fun drawPreview(canvas: Canvas) {
+        val preview = previewBitmap ?: return
+        val dstLeft = offsetX
+        val dstTop = offsetY
+        val dstRight = offsetX + mapWidth * scale
+        val dstBottom = offsetY + mapHeight * scale
+        canvas.drawBitmap(preview, null, Rect(dstLeft.toInt(), dstTop.toInt(), dstRight.toInt(), dstBottom.toInt()), null)
+    }
+
+    private fun shouldRequestDecodeNow(): Boolean {
+        if (!isInteracting) return true
+        val now = SystemClock.uptimeMillis()
+        val allowed = now - lastDecodeRequestAtMs >= INTERACTION_DECODE_THROTTLE_MS
+        if (allowed) {
+            lastDecodeRequestAtMs = now
+        }
+        return allowed
+    }
+
+    private fun tryLoadTileFromDisk(region: Rect, sample: Int) {
+        val cachedMatches = cachedRect == region && cachedSample == sample && cachedBitmap?.isRecycled == false
+        if (cachedMatches) return
+
+        val key = buildTileCacheKey(region, sample)
+        if (lastDiskMissKey == key) return
+
+        val file = tileCacheFile(region, sample)
+        val loaded = synchronized(diskCacheLock) {
+            if (!file.exists()) {
+                null
+            } else {
+                BitmapFactory.decodeFile(file.absolutePath)?.also {
+                    file.setLastModified(System.currentTimeMillis())
+                }
+            }
+        }
+
+        if (loaded == null) {
+            lastDiskMissKey = key
+            return
+        }
+
+        cachedBitmap?.recycle()
+        cachedBitmap = loaded
+        cachedRect = Rect(region)
+        cachedSample = sample
+        lastDiskMissKey = null
+    }
+
+    private fun tileCacheFile(region: Rect, sample: Int): File {
+        val dir = File(context.cacheDir, TILE_DISK_CACHE_DIR)
+        return File(dir, "${buildTileCacheKey(region, sample)}.png")
+    }
+
+    private fun buildTileCacheKey(region: Rect, sample: Int): String {
+        val raw = "map:$currentMapResId:${mapWidth}x${mapHeight}:${region.left},${region.top},${region.right},${region.bottom}:s$sample"
+        val md5 = MessageDigest.getInstance("MD5").digest(raw.toByteArray())
+        return md5.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun saveTileToDisk(region: Rect, sample: Int, bitmap: Bitmap) {
+        synchronized(diskCacheLock) {
+            val dir = File(context.cacheDir, TILE_DISK_CACHE_DIR)
+            if (!dir.exists()) {
+                dir.mkdirs()
+            }
+
+            val target = tileCacheFile(region, sample)
+            val temp = File(target.absolutePath + ".tmp")
+
+            runCatching {
+                FileOutputStream(temp).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    out.flush()
+                }
+                if (target.exists()) {
+                    target.delete()
+                }
+                temp.renameTo(target)
+                target.setLastModified(System.currentTimeMillis())
+                trimDiskCacheLocked(dir)
+            }.onFailure {
+                temp.delete()
+            }
+        }
+    }
+
+    private fun trimDiskCacheLocked(dir: File) {
+        val files = dir.listFiles()?.toMutableList() ?: return
+        var total = files.sumOf { it.length() }
+        if (total <= TILE_DISK_CACHE_MAX_BYTES) return
+
+        files.sortBy { it.lastModified() }
+        for (file in files) {
+            if (total <= TILE_DISK_CACHE_MAX_BYTES) break
+            val len = file.length()
+            if (file.delete()) {
+                total -= len
+            }
+        }
+    }
+
+    private fun warmupInitialTile() {
+        val currentDecoder = decoder ?: return
+        if (width <= 0 || height <= 0) return
+
+        val srcLeft = max(0f, -offsetX / scale)
+        val srcTop = max(0f, -offsetY / scale)
+        val srcRight = min(mapWidth.toFloat(), (width - offsetX) / scale)
+        val srcBottom = min(mapHeight.toFloat(), (height - offsetY) / scale)
+        if (srcRight <= srcLeft || srcBottom <= srcTop) return
+
+        val sample = max(2, calculateInSampleSize(scale))
+        val region = makeQuantizedRegion(srcLeft, srcTop, srcRight, srcBottom, sample)
+        requestDecode(currentDecoder, region, sample)
     }
 
     private fun shouldDecode(region: Rect, sample: Int): Boolean {
@@ -270,6 +415,10 @@ class TiledRouteMapView @JvmOverloads constructor(
                 null
             }
 
+            if (decoded != null) {
+                saveTileToDisk(request.region, request.sample, decoded)
+            }
+
             post {
                 if (request.generation != decoderGeneration.get()) {
                     decoded?.recycle()
@@ -288,6 +437,9 @@ class TiledRouteMapView @JvmOverloads constructor(
                 cachedBitmap = decoded
                 cachedRect = Rect(request.region)
                 cachedSample = request.sample
+                lastDiskMissKey = null
+                previewBitmap?.recycle()
+                previewBitmap = null
                 postInvalidateOnAnimation()
             }
         }
@@ -381,9 +533,12 @@ class TiledRouteMapView @JvmOverloads constructor(
         removeCallbacks(redrawOnIdle)
         isInteracting = false
         pendingRequest = null
+        lastDiskMissKey = null
         cachedBitmap?.recycle()
         cachedBitmap = null
         cachedRect = null
+        previewBitmap?.recycle()
+        previewBitmap = null
         decoder?.recycle()
         decoder = null
     }
