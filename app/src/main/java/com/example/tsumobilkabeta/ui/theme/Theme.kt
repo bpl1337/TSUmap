@@ -27,16 +27,6 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = DarkOnBackground,
     onPrimary = DarkOnBackground
 )
-
-data class MapResources(
-    val mapImageResource: Int
-)
-
-val LocalMapResources = staticCompositionLocalOf {
-    MapResources(
-        mapImageResource = R.drawable.usermap_dark
-    )
-}
 @Composable
 fun TSUMapTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -44,20 +34,9 @@ fun TSUMapTheme(
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
-    val mapResources = if (darkTheme) {
-        R.drawable.usermap_dark
-    } else {
-        R.drawable.usermap_light
-    }
-
-
     MaterialTheme(
         colorScheme = colorScheme
     ) {
-        CompositionLocalProvider (
-            LocalMapResources provides MapResources(mapResources)
-        ) {
-            content()
-        }
+        content()
     }
 }

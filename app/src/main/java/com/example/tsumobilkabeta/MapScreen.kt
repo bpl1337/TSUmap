@@ -23,11 +23,8 @@ import com.yandex.mapkit.map.CameraUpdateReason
 import com.yandex.mapkit.map.InputListener
 import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.mapview.MapView
-import com.yandex.runtime.image.ImageProvider
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.viewinterop.AndroidView
-import kotlin.collections.remove
 
 @Composable
 fun MapScreen(
