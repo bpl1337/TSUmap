@@ -15,7 +15,7 @@
       </SelectionState>
       <SelectionState runConfigName="Phone - TSUmobilkaBETAApp">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-03-30T08:20:24.051457800Z">
+        <DropdownSelection timestamp="2026-03-30T14:46:05.459838200Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\111\.android\avd\Pixel_9_Pro.avd" />
@@ -23,6 +23,9 @@
           </Target>
         </DropdownSelection>
         <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName="greet">
+        <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>
   </component>
