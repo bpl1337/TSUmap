@@ -21,3 +21,5 @@ val LgihtOnBackground = Color(0xFF000000)
 val BorderColor = Color(0xFF000000)
 
 val BorderFill = Color(0x2C919090)
+
+val PathColor = Color(0xA8063FB2)
