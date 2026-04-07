@@ -1,4 +1,4 @@
-package AStar
+package com.example.tsumobilkabeta.AStar
 
 import com.yandex.mapkit.geometry.Point
 import kotlin.math.PI

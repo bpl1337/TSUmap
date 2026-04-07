@@ -1,4 +1,4 @@
-package AStar
+package com.example.tsumobilkabeta.AStar
 
 import kotlin.math.abs
 
