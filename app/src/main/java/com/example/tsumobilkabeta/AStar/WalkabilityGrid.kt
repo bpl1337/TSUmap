@@ -1,4 +1,4 @@
-package com.example.tsumobilkabeta.AStar
+package AStar
 
 const val kStep = 5.0
 

@@ -12,6 +12,19 @@ import kotlin.math.tan
 object GridProjection {
     private const val EARTH_RADIUS = 6378137.0
 
+    fun pointToMeters(point: Point): Pair<Double, Double> {
+        val x = longitudeToMeters(point.longitude)
+        val y = latitudeToMeters(point.latitude)
+        return x to y
+    }
+
+    fun metersToPoint(x: Double, y: Double): Point {
+        return Point(
+            metersToLatitude(y),
+            metersToLongitude(x)
+        )
+    }
+
     fun pointToNode(point: Point, grid: WalkabilityGrid): GridNode {
         val x = longitudeToMeters(point.longitude)
         val y = latitudeToMeters(point.latitude)

@@ -40,8 +40,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.tsumobilkabeta.AI.NnClassifier
-import com.example.tsumobilkabeta.AI.RatingApp
 import com.example.tsumobilkabeta.ui.theme.BorderColor
 import com.example.tsumobilkabeta.ui.theme.BorderFill
 import com.yandex.mapkit.Animation
@@ -59,8 +57,6 @@ import com.example.tsumobilkabeta.ui.theme.PathColor
 import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.IconStyle
 import com.yandex.runtime.image.ImageProvider
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Composable
 fun MapScreen(
@@ -155,11 +151,17 @@ fun MapScreen(
         val tapListener = object : InputListener {
             override fun onMapTap(map: Map, point: Point) {
                 if (!workAreaBounds.contains(point)) return
-                if (viewModel.selectedAlgorithm.value != RouteAlgorithm.ASTAR) return
 
-                when (viewModel.selectionMode.value) {
-                    PointSelectionMode.START -> viewModel.setStartPoint(point)
-                    PointSelectionMode.END -> viewModel.setEndPoint(point)
+                when (viewModel.selectedAlgorithm.value) {
+                    RouteAlgorithm.ASTAR -> {
+                        when (viewModel.selectionMode.value) {
+                            PointSelectionMode.START -> viewModel.setStartPoint(point)
+                            PointSelectionMode.END -> viewModel.setEndPoint(point)
+                        }
+                    }
+                    RouteAlgorithm.ANOTHER -> {
+                        viewModel.setStartPoint(point)
+                    }
                 }
             }
 
@@ -366,29 +368,24 @@ private fun AlgorithmLayer(
             }
         }
         //СЦЕНА ДЛЯ ДРУГИХ АЛГОРИТМОВ
-        RouteAlgorithm.ANOTHER -> NeuralLayer()
-    }
-}
-
-@Composable
-private fun NeuralLayer() {
-    val context = LocalContext.current
-    val classifier = remember(context.applicationContext) {
-        NnClassifier(context.applicationContext)
-    }
-
-    LaunchedEffect(classifier) {
-        withContext(Dispatchers.IO) {
-            classifier.loadWeights()
+        RouteAlgorithm.ANOTHER -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Top
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onBuildRoute) {
+                        Text("Построить маршрут")
+                    }
+                    Button(onClick = onReset) {
+                        Text("Сброс")
+                    }
+                }
+            }
         }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        RatingApp(classifier)
     }
 }
 
