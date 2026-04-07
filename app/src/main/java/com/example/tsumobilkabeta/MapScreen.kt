@@ -151,11 +151,17 @@ fun MapScreen(
         val tapListener = object : InputListener {
             override fun onMapTap(map: Map, point: Point) {
                 if (!workAreaBounds.contains(point)) return
-                if (viewModel.selectedAlgorithm.value != RouteAlgorithm.ASTAR) return
 
-                when (viewModel.selectionMode.value) {
-                    PointSelectionMode.START -> viewModel.setStartPoint(point)
-                    PointSelectionMode.END -> viewModel.setEndPoint(point)
+                when (viewModel.selectedAlgorithm.value) {
+                    RouteAlgorithm.ASTAR -> {
+                        when (viewModel.selectionMode.value) {
+                            PointSelectionMode.START -> viewModel.setStartPoint(point)
+                            PointSelectionMode.END -> viewModel.setEndPoint(point)
+                        }
+                    }
+                    RouteAlgorithm.ANOTHER -> {
+                        viewModel.setStartPoint(point)
+                    }
                 }
             }
 
@@ -362,7 +368,24 @@ private fun AlgorithmLayer(
             }
         }
         //СЦЕНА ДЛЯ ДРУГИХ АЛГОРИТМОВ
-        RouteAlgorithm.ANOTHER -> Unit
+        RouteAlgorithm.ANOTHER -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Top
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onBuildRoute) {
+                        Text("Построить маршрут")
+                    }
+                    Button(onClick = onReset) {
+                        Text("Сброс")
+                    }
+                }
+            }
+        }
     }
 }
 
