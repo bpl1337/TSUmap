@@ -1,12 +1,15 @@
 package com.example.tsumobilkabeta.AI
 
 import android.os.Bundle
-import com.example.tsumobilkabeta.KnnClassifier
-import com.example.tsumobilkabeta.processDrawingImproved
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.example.tsumobilkabeta.processDrawing2px
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
@@ -22,11 +25,15 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tsumobilkabeta.floatArrayToBitmap
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val classifier = KnnClassifier(this)
+        val classifier = NnClassifier(this)
+        lifecycleScope.launch(Dispatchers.IO) {
+            classifier.loadWeights()
+        }
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -36,15 +43,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RatingApp(classifier: KnnClassifier) {
-    var isProductionMode by remember { mutableStateOf(false) }
+fun RatingApp(classifier: NnClassifier) {
+    var debugBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
 
     var currentPath by remember { mutableStateOf(Path()) }
     var resultText by remember { mutableStateOf("Нарисуйте оценку") }
-    var digitToLearn by remember { mutableStateOf("") }
 
     val canvasSizeDp = 300.dp
     val canvasSizePx = with(LocalDensity.current) { canvasSizeDp.toPx() }
@@ -92,54 +96,35 @@ fun RatingApp(classifier: KnnClassifier) {
 
         Row(Modifier.width(canvasSizeDp), horizontalArrangement = Arrangement.SpaceEvenly) {
             Button(
-                onClick = { currentPath = Path(); resultText = "Холст очищен" },
+                onClick = { currentPath = Path(); resultText = "Нарисуйте оценку" },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
             ) {
                 Text("Стереть", color = Color.Black)
             }
             Button(onClick = {
                 if (currentPath.isEmpty) return@Button
-                val data = processDrawingImproved(currentPath, canvasSizePx)
+                val data = processDrawing2px(currentPath, canvasSizePx)
+                debugBitmap = floatArrayToBitmap(data)
                 val pred = classifier.classify(data)
-                resultText = if (pred != -1) "Оценка: $pred" else "Система не обучена!"
+                resultText = if (pred != -1) "Оценка: $pred" else "Нейросеть не загружена!"
             }) { Text("Оценить") }
         }
 
         Text(resultText, Modifier.padding(20.dp), fontSize = 22.sp, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
-
-        if (!isProductionMode) {
-            Spacer(Modifier.weight(1f))
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))) {
-                Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Панель обучения", fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = digitToLearn,
-                            onValueChange = { digitToLearn = it },
-                            label = { Text("Цифра") },
-                            modifier = Modifier.width(90.dp),
-                            singleLine = true
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Button(onClick = {
-                            val d = digitToLearn.toIntOrNull()
-                            if (d != null && !currentPath.isEmpty) {
-                                classifier.addTemplate(d, processDrawingImproved(currentPath, canvasSizePx))
-                                currentPath = Path()
-                                resultText = "Эталон '$d' сохранен!"
-                            }
-                        }) { Text("Запомнить") }
-                    }
-
-                    TextButton(onClick = {
-                        classifier.removeLastTemplate()
-                        resultText = "Последний эталон удален"
-                    }) {
-                        Text("Удалить последнюю запись (Отмена)", color = Color.Red)
-                    }
-                }
+        if (debugBitmap != null) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Так видит нейронка (50x50):", fontSize = 12.sp, color = Color.Gray)
+                Spacer(Modifier.height(4.dp))
+                androidx.compose.foundation.Image(
+                    bitmap = debugBitmap!!,
+                    contentDescription = "Debug View",
+                    modifier = Modifier
+                        .size(100.dp)
+                        .background(Color.White)
+                        .border(1.dp, androidx.compose.ui.graphics.Color.LightGray)
+                )
             }
         }
+
     }
 }
