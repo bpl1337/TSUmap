@@ -40,6 +40,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.tsumobilkabeta.AI.NnClassifier
+import com.example.tsumobilkabeta.AI.RatingApp
 import com.example.tsumobilkabeta.ui.theme.BorderColor
 import com.example.tsumobilkabeta.ui.theme.BorderFill
 import com.yandex.mapkit.Animation
@@ -57,6 +59,8 @@ import com.example.tsumobilkabeta.ui.theme.PathColor
 import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.IconStyle
 import com.yandex.runtime.image.ImageProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun MapScreen(
@@ -362,7 +366,29 @@ private fun AlgorithmLayer(
             }
         }
         //СЦЕНА ДЛЯ ДРУГИХ АЛГОРИТМОВ
-        RouteAlgorithm.ANOTHER -> Unit
+        RouteAlgorithm.ANOTHER -> NeuralLayer()
+    }
+}
+
+@Composable
+private fun NeuralLayer() {
+    val context = LocalContext.current
+    val classifier = remember(context.applicationContext) {
+        NnClassifier(context.applicationContext)
+    }
+
+    LaunchedEffect(classifier) {
+        withContext(Dispatchers.IO) {
+            classifier.loadWeights()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        RatingApp(classifier)
     }
 }
 
