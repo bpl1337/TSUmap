@@ -1,11 +1,10 @@
 package com.example.tsumobilkabeta
 
-import AStar.AStarPathfinder
-import AStar.GridProjection
-import AStar.WalkabilityCsvLoader
-import AStar.WalkabilityGrid
+import com.example.tsumobilkabeta.AStar.AStarPathfinder
+import com.example.tsumobilkabeta.AStar.GridProjection
+import com.example.tsumobilkabeta.AStar.WalkabilityCsvLoader
+import com.example.tsumobilkabeta.AStar.WalkabilityGrid
 import android.content.Context
-import androidx.annotation.RequiresPermission
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -100,8 +99,8 @@ class NavigationViewModel : ViewModel() {
     }
 
     fun buildRouteAntIfReady(){
-        var gridMap = antGrid ?: return
-        var userPoint = startPoint.value ?: return
+        val gridMap = antGrid ?: return
+        val userPoint = startPoint.value ?: return
 
         val routeBuilder = RouteBuilder(gridMap)
 
@@ -113,10 +112,8 @@ class NavigationViewModel : ViewModel() {
             routePoints.value=emptyList()
             return
         }
-        val userGridRaw = gridMap.QGisToGrid(
-            userPoint.longitude,
-            userPoint.latitude
-        )
+        val (userX, userY) = GridProjection.pointToMeters(userPoint)
+        val userGridRaw = gridMap.QGisToGrid(userX, userY)
 
         val userGrid = gridMap.snapToNear(userGridRaw, maxRadius = 20) ?: run{
             routePoints.value = emptyList()
@@ -135,12 +132,7 @@ class NavigationViewModel : ViewModel() {
             end=false
         )
 
-        routePoints.value=result.test.map{(x,y)->
-            Point(
-                y,
-                x
-            )
-        }
+        routePoints.value = result.test.map { (x, y) -> GridProjection.metersToPoint(x, y) }
 
     }
 }

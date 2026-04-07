@@ -1,5 +1,6 @@
-package AStar
+package com.example.tsumobilkabeta.AStar
 
+import java.util.PriorityQueue
 import kotlin.math.abs
 
 object AStarPathfinder {
@@ -18,7 +19,7 @@ object AStarPathfinder {
     ): List<GridNode> {
         if (!grid.isWalkable(start) || !grid.isWalkable(end)) return emptyList()
 
-        val openList = java.util.PriorityQueue(compareBy<OpenNode> { it.fScore })
+        val openList = PriorityQueue(compareBy<OpenNode> { it.fScore })
         val cameFrom = mutableMapOf<GridNode, GridNode>()
         val gScore = mutableMapOf(start to 0)
 

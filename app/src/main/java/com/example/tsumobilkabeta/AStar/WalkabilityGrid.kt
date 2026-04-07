@@ -1,4 +1,7 @@
-package AStar
+package com.example.tsumobilkabeta.AStar
+
+import kotlin.math.abs
+import kotlin.math.max
 
 const val kStep = 5.0
 
@@ -75,7 +78,7 @@ class WalkabilityGrid(
         for (radius in 1..maxRadius) {
             for (dy in -radius..radius) {
                 for (dx in -radius..radius) {
-                    if (kotlin.math.max(kotlin.math.abs(dx), kotlin.math.abs(dy)) != radius) continue
+                    if (max(abs(dx), abs(dy)) != radius) continue
                     val candidate = GridNode(node.x + dx, node.y + dy)
                     if (isWalkable(candidate)) return candidate
                 }
@@ -90,8 +93,8 @@ class WalkabilityGrid(
 
         var x = from.x
         var y = from.y
-        val dx = kotlin.math.abs(to.x - from.x)
-        val dy = kotlin.math.abs(to.y - from.y)
+        val dx = abs(to.x - from.x)
+        val dy = abs(to.y - from.y)
         val sx = if (from.x < to.x) 1 else -1
         val sy = if (from.y < to.y) 1 else -1
         var err = dx - dy
