@@ -1,5 +1,8 @@
 package com.example.tsumobilkabeta.Ant
 import yads.ev
+import android.content.Context
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import kotlin.math.pow
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -150,8 +153,13 @@ class GridMap(
 
 
 object Reader {
-    fun readPlaces(path: String): List<Places> {
-        return File(path).readLines().filter { it.isNotBlank() }.map { line ->
+    fun readAsset(context: Context, fileName: String): List<String>{
+        return context.assets.open(fileName).use{ input->
+            BufferedReader(InputStreamReader(input)).readLines()
+        }.filter { it.isNotBlank() }
+    }
+    fun readPlaces(context: Context, name: String): List<Places> {
+        return readAsset(context,name).map{line->
             val parts = line.split(",")
             Places(
                 id = parts[2].trim().toInt(),
@@ -162,8 +170,8 @@ object Reader {
         }
     }
 
-    fun readGridMap(path: String): GridMap{
-        val rows = File(path).readLines().filter{it.isNotBlank()}.map{line->
+    fun readGridMap(context: Context, name: String): GridMap{
+        val rows = readAsset(context,name).map{line->
             val parts = line.split(",")
             Triple(
                 parts[0].trim().toDouble(),
@@ -415,38 +423,4 @@ class AntColony(
             }
         }
     }
-
-}
-
-fun main(){
-    val mapPath = "ant.csv"
-    val placesPath = "plasec.csv"
-
-    val gridMap = Reader.readGridMap(mapPath)
-    val places = Reader.readPlaces(placesPath)
-
-
-    val userChoice = setOf(1,2,3,4,5,6)
-    val selectedPlaces = places.filter { it.id in userChoice }
-
-    val routeBuilder = RouteBuilder(gridMap)
-    val mappedPlaces = routeBuilder.mapPlaces(selectedPlaces,maxRadius=10)
-
-    var userX = 0.0
-    var userY= 0.0
-
-    val userGridRaw = gridMap.QGisToGrid(userX,userY)
-    val userGrid = gridMap.snapToNear(userGridRaw,maxRadius=20) !!
-
-    val routeResult = routeBuilder.buildRoute(
-        userPoint = userGrid,
-        places=mappedPlaces,
-        antCount = 20,
-        iter=150,
-        alpha = 1.0,
-        beta=4.0,
-        evaporation = 0.4,
-        q=100.0,
-        end=false
-    )
 }
