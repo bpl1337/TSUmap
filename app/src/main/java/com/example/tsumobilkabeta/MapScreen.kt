@@ -1,5 +1,6 @@
 package com.example.tsumobilkabeta
 
+import android.content.Intent
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -53,6 +54,8 @@ import com.yandex.mapkit.map.InputListener
 import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.mapview.MapView
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
+import com.example.tsumobilkabeta.AI.MainActivity as AIMainActivity
 import com.example.tsumobilkabeta.ui.theme.PathColor
 import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.IconStyle
@@ -159,9 +162,11 @@ fun MapScreen(
                             PointSelectionMode.END -> viewModel.setEndPoint(point)
                         }
                     }
-                    RouteAlgorithm.ANOTHER -> {
+                    RouteAlgorithm.ANT -> {
                         viewModel.setStartPoint(point)
                     }
+
+                    RouteAlgorithm.ANOTHER -> Unit
                 }
             }
 
@@ -241,17 +246,6 @@ fun MapScreen(
     Box(modifier = modifier.fillMaxSize()) {
         MapCanvas(mapView = mapView)
 
-        AlgorithmSwitcher(
-            isOpen = isAlgorithmMenuOpen,
-            selectedAlgorithm = selectedAlgorithm,
-            onMenuToggle = { isAlgorithmMenuOpen = !isAlgorithmMenuOpen },
-            onDismiss = { isAlgorithmMenuOpen = false },
-            onSelectAlgorithm = {
-                viewModel.selectAlgorithm(it)
-                isAlgorithmMenuOpen = false
-            }
-        )
-
         AlgorithmLayer(
             selectedAlgorithm = selectedAlgorithm,
             selectionMode = selectionMode,
@@ -259,6 +253,21 @@ fun MapScreen(
             onSelectionModeChange = { viewModel.setSelectionMode(it) },
             onBuildRoute = { viewModel.buildRouteIfReady() },
             onReset = { viewModel.resetPoints() }
+        )
+
+        AlgorithmSwitcher(
+            isOpen = isAlgorithmMenuOpen,
+            selectedAlgorithm = selectedAlgorithm,
+            onMenuToggle = { isAlgorithmMenuOpen = !isAlgorithmMenuOpen },
+            onDismiss = { isAlgorithmMenuOpen = false },
+            onSelectAlgorithm = {
+                if (it == RouteAlgorithm.ANOTHER) {
+                    context.startActivity(Intent(context, AIMainActivity::class.java))
+                } else {
+                    viewModel.selectAlgorithm(it)
+                }
+                isAlgorithmMenuOpen = false
+            }
         )
     }
 }
@@ -319,6 +328,11 @@ private fun AlgorithmSwitcher(
                         onClick = { onSelectAlgorithm(RouteAlgorithm.ASTAR) }
                     )
                     AlgorithmOptionButton(
+                        text = RouteAlgorithm.ANT.title,
+                        selected = selectedAlgorithm == RouteAlgorithm.ANT,
+                        onClick = { onSelectAlgorithm(RouteAlgorithm.ANT) }
+                    )
+                    AlgorithmOptionButton(
                         text = RouteAlgorithm.ANOTHER.title,
                         selected = selectedAlgorithm == RouteAlgorithm.ANOTHER,
                         onClick = { onSelectAlgorithm(RouteAlgorithm.ANOTHER) }
@@ -367,18 +381,17 @@ private fun AlgorithmLayer(
                 }
             }
         }
-        //СЦЕНА ДЛЯ ДРУГИХ АЛГОРИТМОВ
-        RouteAlgorithm.ANOTHER -> {
-            Column(
+
+        RouteAlgorithm.ANT -> {
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Top
+                    .padding(top = 35.dp, end = 12.dp),
+                contentAlignment = Alignment.TopEnd
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onBuildRoute) {
-                        Text("Построить маршрут")
+                        Text("Построить\nмаршрут")
                     }
                     Button(onClick = onReset) {
                         Text("Сброс")
@@ -386,6 +399,8 @@ private fun AlgorithmLayer(
                 }
             }
         }
+
+        RouteAlgorithm.ANOTHER -> Unit
     }
 }
 
@@ -482,6 +497,7 @@ private fun ModeButton(
 private val RouteAlgorithm.title: String
     get() = when (this) {
         RouteAlgorithm.ASTAR -> "A*"
-        RouteAlgorithm.ANOTHER -> "ЧЕТО"
+        RouteAlgorithm.ANT -> "Муравьи"
+        RouteAlgorithm.ANOTHER -> "Нейронка"
     }
 

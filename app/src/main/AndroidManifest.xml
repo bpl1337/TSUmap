@@ -25,6 +25,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".AI.MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TSUmobilkaBETA" />
         <meta-data
             android:name="com.yandex.maps.api.key"
             android:value="4bef7f08-48f0-4a69-b484-4f79582744c8" />
