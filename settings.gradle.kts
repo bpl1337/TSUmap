@@ -9,6 +9,7 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
+        maven { url = uri("https://yandex.cloud")
     }
 }
 plugins {
@@ -23,5 +24,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "TSUmobilkaBETA"
-include(":app")
+include(":app")}
  
