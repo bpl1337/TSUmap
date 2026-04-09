@@ -44,8 +44,10 @@ class NnClassifier(private val context: Context) {
             false
         }
     }
-    fun classify(input: FloatArray): Int {
-        if (!initialized || input.size != INPUT_SIZE) return -1
+    fun classify(input: FloatArray): Int = classifyWithConfidence(input).first
+
+    fun classifyWithConfidence(input: FloatArray): Pair<Int, Float> {
+        if (!initialized || input.size != INPUT_SIZE) return Pair(-1, 0f)
         val z1 = matVecMul(w1!!, input, INPUT_SIZE, HIDDEN1)
         for (j in z1.indices) z1[j] += b1!![j]
         val a1 = relu(z1)
@@ -54,8 +56,9 @@ class NnClassifier(private val context: Context) {
         val a2 = relu(z2)
         val z3 = matVecMul(w3!!, a2, HIDDEN2, OUTPUT_SIZE)
         for (j in z3.indices) z3[j] += b3!![j]
-
-        return argmax(softmax(z3))
+        val probs = softmax(z3)
+        val digit = argmax(probs)
+        return Pair(digit, probs[digit])
     }
     private fun readInt(bytes: ByteArray, offset: Int): Int =
         (bytes[offset].toInt() and 0xFF) or
