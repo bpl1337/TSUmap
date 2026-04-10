@@ -64,7 +64,7 @@ fun RatingApp(classifier: NnClassifier) {
     var digitResult by remember { mutableStateOf(-1) }
     var confidence by remember { mutableStateOf(0f) }
     var adminStatus by remember { mutableStateOf("") }
-    var totalSaved by remember { mutableStateOf(countSamples(context)) }
+    var countsPerDigit by remember { mutableStateOf(countSamplesPerDigit(context)) }
 
     val canvasSizeDp = 300.dp
     val canvasSizePx = with(LocalDensity.current) { canvasSizeDp.toPx() }
@@ -187,8 +187,9 @@ fun RatingApp(classifier: NnClassifier) {
             HorizontalDivider()
             Spacer(Modifier.height(8.dp))
 
+            val totalSaved = countsPerDigit.sum()
             Text("Панель датасета", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-            Text("Сохранено: $totalSaved образцов", fontSize = 11.sp, color = Color.Gray)
+            Text("Всего: $totalSaved образцов", fontSize = 11.sp, color = Color.Gray)
 
             if (adminStatus.isNotEmpty()) {
                 Text(adminStatus, fontSize = 12.sp, color = Color(0xFF1565C0))
@@ -198,48 +199,36 @@ fun RatingApp(classifier: NnClassifier) {
 
             val digits = (0..9).toList()
             Column {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    digits.take(5).forEach { digit ->
-                        Button(
-                            onClick = {
-                                if (!currentPath.isEmpty) {
-                                    val pixels = processDrawing2px(currentPath, canvasSizePx)
-                                    saveSample(context, digit, pixels)
-                                    totalSaved++
-                                    currentPath = Path()
-                                    adminStatus = "Сохранено: цифра $digit"
-                                } else {
-                                    adminStatus = "Сначала нарисуй!"
+                listOf(digits.take(5), digits.drop(5)).forEach { row ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        row.forEach { digit ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Button(
+                                    onClick = {
+                                        if (!currentPath.isEmpty) {
+                                            val pixels = processDrawing2px(currentPath, canvasSizePx)
+                                            saveSample(context, digit, pixels)
+                                            countsPerDigit = countsPerDigit.copyOf().also { it[digit]++ }
+                                            currentPath = Path()
+                                            adminStatus = "Сохранено: цифра $digit"
+                                        } else {
+                                            adminStatus = "Сначала нарисуй!"
+                                        }
+                                    },
+                                    modifier = Modifier.size(48.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text(digit.toString(), fontSize = 16.sp)
                                 }
-                            },
-                            modifier = Modifier.size(48.dp),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text(digit.toString(), fontSize = 16.sp)
+                                Text(
+                                    text = "${countsPerDigit[digit]}",
+                                    fontSize = 10.sp,
+                                    color = Color.Gray
+                                )
+                            }
                         }
                     }
-                }
-                Spacer(Modifier.height(4.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    digits.drop(5).forEach { digit ->
-                        Button(
-                            onClick = {
-                                if (!currentPath.isEmpty) {
-                                    val pixels = processDrawing2px(currentPath, canvasSizePx)
-                                    saveSample(context, digit, pixels)
-                                    totalSaved++
-                                    currentPath = Path()
-                                    adminStatus = "Сохранено: цифра $digit"
-                                } else {
-                                    adminStatus = "Сначала нарисуй!"
-                                }
-                            },
-                            modifier = Modifier.size(48.dp),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text(digit.toString(), fontSize = 16.sp)
-                        }
-                    }
+                    Spacer(Modifier.height(4.dp))
                 }
             }
 
@@ -247,10 +236,12 @@ fun RatingApp(classifier: NnClassifier) {
 
             Button(
                 onClick = {
-                    val deleted = deleteLastSample(context)
-                    if (deleted) {
-                        totalSaved = maxOf(0, totalSaved - 1)
-                        adminStatus = "Последняя запись удалена"
+                    val deletedDigit = deleteLastSample(context)
+                    if (deletedDigit != -1) {
+                        countsPerDigit = countsPerDigit.copyOf().also {
+                            it[deletedDigit] = maxOf(0, it[deletedDigit] - 1)
+                        }
+                        adminStatus = "Удалена последняя запись (цифра $deletedDigit)"
                     } else {
                         adminStatus = "Датасет пуст"
                     }
@@ -269,17 +260,23 @@ private fun saveSample(context: android.content.Context, label: Int, pixels: Flo
         .appendText("$label|${pixels.joinToString(",")}\n")
 }
 
-private fun deleteLastSample(context: android.content.Context): Boolean {
+private fun deleteLastSample(context: android.content.Context): Int {
     val file = File(context.filesDir, "dataset_2px.txt")
-    if (!file.exists()) return false
+    if (!file.exists()) return -1
     val lines = file.readLines().filter { it.isNotBlank() }
-    if (lines.isEmpty()) return false
+    if (lines.isEmpty()) return -1
+    val lastDigit = lines.last().substringBefore('|').toIntOrNull() ?: -1
     file.writeText(lines.dropLast(1).joinToString("\n") + "\n")
-    return true
+    return lastDigit
 }
 
-private fun countSamples(context: android.content.Context): Int {
+private fun countSamplesPerDigit(context: android.content.Context): IntArray {
+    val counts = IntArray(10)
     val file = File(context.filesDir, "dataset_2px.txt")
-    if (!file.exists()) return 0
-    return file.readLines().count { it.isNotBlank() }
+    if (!file.exists()) return counts
+    file.forEachLine { line ->
+        val digit = line.substringBefore('|').toIntOrNull()
+        if (digit != null && digit in 0..9) counts[digit]++
+    }
+    return counts
 }
