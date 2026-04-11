@@ -35,7 +35,7 @@ import com.example.tsumobilkabeta.ui.theme.TSUMapTheme
 import java.io.File
 private const val ADMIN_MODE = true
 
-class MainActivity : ComponentActivity() {
+class AIMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val classifier = NnClassifier(this)

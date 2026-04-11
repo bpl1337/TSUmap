@@ -90,5 +90,53 @@ object AStarPathfinder {
         return path
     }
 
+    fun findPath(
+        grid: WalkabilityGrid,
+        start: GridNode,
+        end: GridNode
+    ): List<GridNode>? {
+        if (!grid.isWalkable(start) || !grid.isWalkable(end)) return null
+        if (start == end) return listOf(start)
+
+        val openList = PriorityQueue(compareBy<OpenNode> { it.fScore })
+        val cameFrom = HashMap<GridNode, GridNode>()
+        val gScore = HashMap<GridNode, Int>().also { it[start] = 0 }
+        val closedSet = HashSet<GridNode>()
+
+        openList.add(OpenNode(start, heuristic(start, end)))
+
+        while (openList.isNotEmpty()) {
+            val current = openList.poll()?.node ?: continue
+            if (!closedSet.add(current)) continue
+
+            if (current == end) {
+                return reconstructPath(cameFrom, current)
+            }
+
+            val baseScore = gScore[current] ?: continue
+            for (neighbor in grid.neighbors(current)) {
+                if (neighbor in closedSet) continue
+                val stepCost = if (neighbor.x != current.x && neighbor.y != current.y)
+                    DIAGONAL_COST else ORTHOGONAL_COST
+                val tentative = baseScore + stepCost
+                if (tentative < gScore.getOrDefault(neighbor, Int.MAX_VALUE)) {
+                    cameFrom[neighbor] = current
+                    gScore[neighbor] = tentative
+                    openList.add(OpenNode(neighbor, tentative + heuristic(neighbor, end)))
+                }
+            }
+        }
+        return null
+    }
+
+    fun pathDistanceMeters(path: List<GridNode>): Double {
+        var dist = 0.0
+        for (i in 0 until path.size - 1) {
+            val isDiag = path[i].x != path[i + 1].x && path[i].y != path[i + 1].y
+            dist += if (isDiag) kStep * kotlin.math.sqrt(2.0) else kStep
+        }
+        return dist
+    }
+
 }
 

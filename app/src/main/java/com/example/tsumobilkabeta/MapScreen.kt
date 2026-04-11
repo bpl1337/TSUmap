@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
@@ -47,6 +48,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tsumobilkabeta.AI.AIMainActivity
 import com.example.tsumobilkabeta.AStar.AStarOverlayView
 import com.example.tsumobilkabeta.DecisionTree.DecisionTreeActivity
+import com.example.tsumobilkabeta.Genetic.DrawableRoute
+import com.example.tsumobilkabeta.Genetic.FoodRoutePanel
+import com.example.tsumobilkabeta.Genetic.GeneticFoodViewModel
 import com.example.tsumobilkabeta.ui.theme.BorderColor
 import com.example.tsumobilkabeta.ui.theme.BorderFill
 import com.example.tsumobilkabeta.ui.theme.PathColor
@@ -61,6 +65,7 @@ import com.yandex.mapkit.map.CameraUpdateReason
 import com.yandex.mapkit.map.IconStyle
 import com.yandex.mapkit.map.InputListener
 import com.yandex.mapkit.map.Map
+import com.yandex.mapkit.map.MapObject
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
 
@@ -84,7 +89,12 @@ fun MapScreen(
     val hasBothPoints = viewModel.startPoint.value != null && viewModel.endPoint.value != null
     var isAlgorithmMenuOpen by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { viewModel.loadGrid(context) }
+    val geneticViewModel: GeneticFoodViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadGrid(context)
+        geneticViewModel.loadGrid(context)
+    }
 
     val mapView = remember {
         MapView(context).apply {
@@ -151,6 +161,7 @@ fun MapScreen(
                         PointSelectionMode.BARRIER -> viewModel.toggleBarrier(point)
                     }
                     RouteAlgorithm.ANT -> viewModel.setStartPoint(point)
+                    RouteAlgorithm.GENETIC -> geneticViewModel.handleMapTap(point)
                     RouteAlgorithm.ANOTHER -> Unit
                     RouteAlgorithm.DECISION_TREE -> Unit
                 }
@@ -207,6 +218,52 @@ fun MapScreen(
         onDispose { yandexMap.mapObjects.remove(rect) }
     }
 
+    val geneticDrawable by geneticViewModel.drawableRoute
+    val geneticStartPt  by geneticViewModel.startPoint
+
+    DisposableEffect(yandexMap, geneticStartPt, selectedAlgorithm) {
+        val marker = if (geneticStartPt != null && selectedAlgorithm == RouteAlgorithm.GENETIC) {
+            yandexMap.mapObjects.addPlacemark(geneticStartPt!!).apply {
+                setIcon(
+                    imageProviderFromDrawable(context, R.drawable.startpoint),
+                    IconStyle().apply { anchor = PointF(0.5f, 1f); scale = 0.5f }
+                )
+                zIndex = 10f
+            }
+        } else null
+        onDispose { marker?.let { runCatching { yandexMap.mapObjects.remove(it) } } }
+    }
+
+    DisposableEffect(yandexMap, geneticDrawable, selectedAlgorithm) {
+        val added = mutableListOf<MapObject>()
+        val dr = geneticDrawable
+        if (dr != null && selectedAlgorithm == RouteAlgorithm.GENETIC) {
+            val legColors = intArrayOf(
+                0xFF2563EB.toInt(), 0xFF16A34A.toInt(), 0xFFEA580C.toInt(),
+                0xFF9333EA.toInt(), 0xFF0891B2.toInt(), 0xFFDC2626.toInt(),
+                0xFFCA8A04.toInt()
+            )
+            val liveColor = 0xD0FAA014.toInt()
+
+            dr.segments.forEachIndexed { idx, pts ->
+                if (pts.size >= 2) {
+                    val color = if (dr.isFinal) legColors[idx % legColors.size] else liveColor
+                    val width = if (dr.isFinal) 4f else 3f
+                    val poly = yandexMap.mapObjects.addPolyline(Polyline(pts)).apply {
+                        setStrokeColor(color); strokeWidth = width
+                    }
+                    added.add(poly)
+
+                    if (dr.isFinal) {
+                        val arrows = addArrowhead(yandexMap, pts, color)
+                        added.addAll(arrows)
+                    }
+                }
+            }
+        }
+        onDispose { added.forEach { runCatching { yandexMap.mapObjects.remove(it) } } }
+    }
+
     val barriers = viewModel.barrierNodes.value
     val animClosed = viewModel.animClosed.value
     val animOpen = viewModel.animOpen.value
@@ -239,7 +296,8 @@ fun MapScreen(
             onSelectionModeChange = { viewModel.setSelectionMode(it) },
             onBuildRoute = { viewModel.buildRouteIfReady() },
             onReset = { viewModel.resetPoints() },
-            onSkipAnimation = { viewModel.skipAnimation() }
+            onSkipAnimation = { viewModel.skipAnimation() },
+            geneticViewModel = geneticViewModel
         )
 
         AlgorithmSwitcher(
@@ -300,6 +358,7 @@ private fun AlgorithmSwitcher(
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AlgorithmOptionButton(RouteAlgorithm.ASTAR.title, selectedAlgorithm == RouteAlgorithm.ASTAR) { onSelectAlgorithm(RouteAlgorithm.ASTAR) }
                     AlgorithmOptionButton(RouteAlgorithm.ANT.title, selectedAlgorithm == RouteAlgorithm.ANT) { onSelectAlgorithm(RouteAlgorithm.ANT) }
+                    AlgorithmOptionButton(RouteAlgorithm.GENETIC.title, selectedAlgorithm == RouteAlgorithm.GENETIC) { onSelectAlgorithm(RouteAlgorithm.GENETIC) }
                     AlgorithmOptionButton(RouteAlgorithm.ANOTHER.title, selectedAlgorithm == RouteAlgorithm.ANOTHER) { onSelectAlgorithm(RouteAlgorithm.ANOTHER) }
                     AlgorithmOptionButton(RouteAlgorithm.DECISION_TREE.title, selectedAlgorithm == RouteAlgorithm.DECISION_TREE) { onSelectAlgorithm(RouteAlgorithm.DECISION_TREE) }
                 }
@@ -318,7 +377,8 @@ private fun AlgorithmLayer(
     onSelectionModeChange: (PointSelectionMode) -> Unit,
     onBuildRoute: () -> Unit,
     onReset: () -> Unit,
-    onSkipAnimation: () -> Unit
+    onSkipAnimation: () -> Unit,
+    geneticViewModel: GeneticFoodViewModel? = null
 ) {
     when (selectedAlgorithm) {
         RouteAlgorithm.ASTAR -> {
@@ -355,9 +415,59 @@ private fun AlgorithmLayer(
             }
         }
 
+        RouteAlgorithm.GENETIC -> {
+            if (geneticViewModel != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 35.dp, start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    Card(modifier = Modifier.widthIn(max = 280.dp)) {
+                        Box(modifier = Modifier.padding(12.dp).heightIn(max = 480.dp)) {
+                            FoodRoutePanel(viewModel = geneticViewModel)
+                        }
+                    }
+                }
+            }
+        }
+
         RouteAlgorithm.ANOTHER -> Unit
         RouteAlgorithm.DECISION_TREE -> Unit
     }
+}
+
+private fun addArrowhead(yandexMap: Map, points: List<Point>, color: Int): List<MapObject> {
+    if (points.size < 2) return emptyList()
+
+    val tip  = points.last()
+    val tail = points[maxOf(0, points.size - 6)]
+
+    val cosLat = Math.cos(Math.toRadians(tip.latitude))
+
+    val dx = (tip.longitude - tail.longitude) * cosLat
+    val dy = tip.latitude - tail.latitude
+    val len = Math.sqrt(dx * dx + dy * dy)
+    if (len < 1e-10) return emptyList()
+
+    val ux = dx / len; val uy = dy / len
+    val arrowLen = 15.0 / 111_320.0
+
+    fun wing(angleDeg: Double): Point {
+        val a = Math.toRadians(angleDeg)
+        val wx = (ux * Math.cos(a) - uy * Math.sin(a)) * arrowLen / cosLat
+        val wy = (ux * Math.sin(a) + uy * Math.cos(a)) * arrowLen
+        return Point(tip.latitude + wy, tip.longitude + wx)
+    }
+
+    return listOf(
+        yandexMap.mapObjects.addPolyline(Polyline(listOf(wing(145.0), tip))).apply {
+            setStrokeColor(color); strokeWidth = 3f
+        },
+        yandexMap.mapObjects.addPolyline(Polyline(listOf(wing(-145.0), tip))).apply {
+            setStrokeColor(color); strokeWidth = 3f
+        }
+    )
 }
 
 data class WorkAreaBounds(
@@ -411,6 +521,7 @@ private fun ModeButton(text: String, selected: Boolean, onClick: () -> Unit) {
 private val RouteAlgorithm.title: String get() = when (this) {
     RouteAlgorithm.ASTAR -> "A*"
     RouteAlgorithm.ANT -> "Муравьи"
+    RouteAlgorithm.GENETIC -> "Генетика (еда)"
     RouteAlgorithm.ANOTHER -> "Нейронка"
     RouteAlgorithm.DECISION_TREE -> "Дерево решений"
 }

@@ -6,7 +6,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asImageBitmap
 
-
 fun floatArrayToBitmap(data: FloatArray): ImageBitmap {
     val size = 50
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)

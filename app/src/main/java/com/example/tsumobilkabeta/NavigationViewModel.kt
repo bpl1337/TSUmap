@@ -137,6 +137,7 @@ class NavigationViewModel : ViewModel() {
             RouteAlgorithm.ANT -> buildRouteAntIfReady()
             RouteAlgorithm.ANOTHER -> Unit
             RouteAlgorithm.DECISION_TREE -> Unit
+            RouteAlgorithm.GENETIC -> Unit
         }
     }
 
@@ -223,6 +224,6 @@ class NavigationViewModel : ViewModel() {
 
 enum class PointSelectionMode { START, END, BARRIER }
 
-enum class RouteAlgorithm { ASTAR, ANT, ANOTHER, DECISION_TREE }
+enum class RouteAlgorithm { ASTAR, ANT, ANOTHER, DECISION_TREE, GENETIC }
 
 enum class PathStatus { NONE, SEARCHING, FOUND, NOT_FOUND }
