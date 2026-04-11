@@ -71,6 +71,7 @@ class NavigationViewModel : ViewModel() {
             RouteAlgorithm.ASTAR -> buildAstarRouteIfReady()
             RouteAlgorithm.ANT -> buildRouteAntIfReady()
             RouteAlgorithm.ANOTHER -> Unit
+            RouteAlgorithm.DECISION_TREE -> Unit
         }
     }
 
@@ -146,6 +147,7 @@ enum class PointSelectionMode {
 enum class RouteAlgorithm {
     ASTAR,
     ANT,
-    ANOTHER
+    ANOTHER,
+    DECISION_TREE
 }
 

@@ -26,7 +26,11 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".AI.MainActivity"
+            android:name=".AI.AIMainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TSUmobilkaBETA" />
+        <activity
+            android:name=".DecisionTree.DecisionTreeActivity"
             android:exported="false"
             android:theme="@style/Theme.TSUmobilkaBETA" />
         <meta-data

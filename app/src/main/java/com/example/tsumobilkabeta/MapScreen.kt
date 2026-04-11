@@ -1,7 +1,7 @@
 package com.example.tsumobilkabeta
 
-import android.content.Intent
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.PointF
@@ -14,6 +14,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -37,28 +38,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.tsumobilkabeta.AI.AIMainActivity
+import com.example.tsumobilkabeta.DecisionTree.DecisionTreeActivity
 import com.example.tsumobilkabeta.ui.theme.BorderColor
 import com.example.tsumobilkabeta.ui.theme.BorderFill
+import com.example.tsumobilkabeta.ui.theme.PathColor
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.geometry.LinearRing
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.geometry.Polygon
+import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.CameraListener
 import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.CameraUpdateReason
+import com.yandex.mapkit.map.IconStyle
 import com.yandex.mapkit.map.InputListener
 import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.mapview.MapView
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.zIndex
-import com.example.tsumobilkabeta.AI.MainActivity as AIMainActivity
-import com.example.tsumobilkabeta.ui.theme.PathColor
-import com.yandex.mapkit.geometry.Polyline
-import com.yandex.mapkit.map.IconStyle
 import com.yandex.runtime.image.ImageProvider
 
 @Composable
@@ -87,6 +88,7 @@ fun MapScreen(
 
     val mapView = remember {
         MapView(context).apply {
+            mapWindow.map.isNightModeEnabled = true
             mapWindow.map.move(CameraPosition(workAreaBounds.centerPoint, 16f, 0f, 0f))
         }
     }
@@ -167,6 +169,7 @@ fun MapScreen(
                     }
 
                     RouteAlgorithm.ANOTHER -> Unit
+                    RouteAlgorithm.DECISION_TREE -> Unit
                 }
             }
 
@@ -261,10 +264,16 @@ fun MapScreen(
             onMenuToggle = { isAlgorithmMenuOpen = !isAlgorithmMenuOpen },
             onDismiss = { isAlgorithmMenuOpen = false },
             onSelectAlgorithm = {
-                if (it == RouteAlgorithm.ANOTHER) {
-                    context.startActivity(Intent(context, AIMainActivity::class.java))
-                } else {
-                    viewModel.selectAlgorithm(it)
+                when (it) {
+                    RouteAlgorithm.ANOTHER -> {
+                        context.startActivity(Intent(context, AIMainActivity::class.java))
+                    }
+                    RouteAlgorithm.DECISION_TREE -> {
+                        context.startActivity(Intent(context, DecisionTreeActivity::class.java))
+                    }
+                    else -> {
+                        viewModel.selectAlgorithm(it)
+                    }
                 }
                 isAlgorithmMenuOpen = false
             }
@@ -337,6 +346,11 @@ private fun AlgorithmSwitcher(
                         selected = selectedAlgorithm == RouteAlgorithm.ANOTHER,
                         onClick = { onSelectAlgorithm(RouteAlgorithm.ANOTHER) }
                     )
+                    AlgorithmOptionButton(
+                        text = RouteAlgorithm.DECISION_TREE.title,
+                        selected = selectedAlgorithm == RouteAlgorithm.DECISION_TREE,
+                        onClick = { onSelectAlgorithm(RouteAlgorithm.DECISION_TREE) }
+                    )
                 }
             }
         }
@@ -401,6 +415,7 @@ private fun AlgorithmLayer(
         }
 
         RouteAlgorithm.ANOTHER -> Unit
+        RouteAlgorithm.DECISION_TREE -> Unit
     }
 }
 
@@ -499,5 +514,5 @@ private val RouteAlgorithm.title: String
         RouteAlgorithm.ASTAR -> "A*"
         RouteAlgorithm.ANT -> "Муравьи"
         RouteAlgorithm.ANOTHER -> "Нейронка"
+        RouteAlgorithm.DECISION_TREE -> "Дерево решений"
     }
-
