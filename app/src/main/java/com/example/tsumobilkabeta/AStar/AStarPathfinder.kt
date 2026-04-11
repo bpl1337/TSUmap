@@ -12,46 +12,57 @@ object AStarPathfinder {
         val fScore: Int
     )
 
-    fun findPath(
+    fun findPathWithSteps(
         grid: WalkabilityGrid,
         start: GridNode,
         end: GridNode
-    ): List<GridNode> {
-        if (!grid.isWalkable(start) || !grid.isWalkable(end)) return emptyList()
+    ): Pair<List<GridNode>, List<SearchStep>> {
+        if (!grid.isWalkable(start) || !grid.isWalkable(end)) return Pair(emptyList(), emptyList())
+        if (start == end) return Pair(listOf(start), emptyList())
 
+        val steps = mutableListOf<SearchStep>()
         val openList = PriorityQueue(compareBy<OpenNode> { it.fScore })
         val cameFrom = mutableMapOf<GridNode, GridNode>()
         val gScore = mutableMapOf(start to 0)
+        val closedSet = mutableSetOf<GridNode>()
+        val openSet = mutableSetOf(start)
 
         openList.add(OpenNode(start, heuristic(start, end)))
 
         while (openList.isNotEmpty()) {
             val current = openList.poll()?.node ?: continue
+            if (!closedSet.add(current)) continue
+            openSet.remove(current)
+
             if (current == end) {
-                val rawPath = reconstructPath(cameFrom, current)
-                return rawPath
+                val path = reconstructPath(cameFrom, current)
+                steps.add(SearchStep(current, openSet.toSet(), closedSet.toSet(), path))
+                return Pair(path, steps)
             }
 
-            val baseScore = gScore[current] ?: continue
+            steps.add(SearchStep(current, openSet.toSet(), closedSet.toSet(), emptyList()))
 
+            val baseScore = gScore[current] ?: continue
             for (neighbor in grid.neighbors(current)) {
+                if (neighbor in closedSet) continue
                 val stepCost = if (neighbor.x != current.x && neighbor.y != current.y) {
                     DIAGONAL_COST
                 } else {
                     ORTHOGONAL_COST
                 }
-
                 val tentative = baseScore + stepCost
                 if (tentative < gScore.getOrDefault(neighbor, Int.MAX_VALUE)) {
                     cameFrom[neighbor] = current
                     gScore[neighbor] = tentative
                     val fScore = tentative + heuristic(neighbor, end)
                     openList.add(OpenNode(neighbor, fScore))
+                    openSet.add(neighbor)
                 }
             }
         }
 
-        return emptyList()
+        steps.add(SearchStep(start, emptySet(), closedSet.toSet(), emptyList()))
+        return Pair(emptyList(), steps)
     }
 
     private fun heuristic(a: GridNode, b: GridNode): Int {

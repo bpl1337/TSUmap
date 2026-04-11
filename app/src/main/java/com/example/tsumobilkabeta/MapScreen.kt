@@ -14,17 +14,18 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +45,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tsumobilkabeta.AI.AIMainActivity
+import com.example.tsumobilkabeta.AStar.AStarOverlayView
 import com.example.tsumobilkabeta.DecisionTree.DecisionTreeActivity
 import com.example.tsumobilkabeta.ui.theme.BorderColor
 import com.example.tsumobilkabeta.ui.theme.BorderFill
@@ -82,9 +84,7 @@ fun MapScreen(
     val hasBothPoints = viewModel.startPoint.value != null && viewModel.endPoint.value != null
     var isAlgorithmMenuOpen by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        viewModel.loadGrid(context)
-    }
+    LaunchedEffect(Unit) { viewModel.loadGrid(context) }
 
     val mapView = remember {
         MapView(context).apply {
@@ -94,6 +94,7 @@ fun MapScreen(
     }
     val yandexMap = mapView.mapWindow.map
 
+    val overlayView = remember { AStarOverlayView(context) }
     val isAutoCorrecting = remember { booleanArrayOf(false) }
 
     val boundsListener = remember {
@@ -104,32 +105,21 @@ fun MapScreen(
                 cameraUpdateReason: CameraUpdateReason,
                 finished: Boolean
             ) {
+                overlayView.post { overlayView.invalidate() }
                 if (!finished) return
-                if (isAutoCorrecting[0]) {
-                    isAutoCorrecting[0] = false
-                    return
-                }
+                if (isAutoCorrecting[0]) { isAutoCorrecting[0] = false; return }
 
                 val clampedLat = cameraPosition.target.latitude.coerceIn(
-                    workAreaBounds.minLatitude,
-                    workAreaBounds.maxLatitude
+                    workAreaBounds.minLatitude, workAreaBounds.maxLatitude
                 )
                 val clampedLon = cameraPosition.target.longitude.coerceIn(
-                    workAreaBounds.minLongitude,
-                    workAreaBounds.maxLongitude
+                    workAreaBounds.minLongitude, workAreaBounds.maxLongitude
                 )
-
                 if (clampedLat != cameraPosition.target.latitude || clampedLon != cameraPosition.target.longitude) {
                     isAutoCorrecting[0] = true
                     map.move(
-                        CameraPosition(
-                            Point(clampedLat, clampedLon),
-                            cameraPosition.zoom,
-                            cameraPosition.azimuth,
-                            cameraPosition.tilt
-                        ),
-                        Animation(Animation.Type.SMOOTH, 0.2f),
-                        null
+                        CameraPosition(Point(clampedLat, clampedLon), cameraPosition.zoom, cameraPosition.azimuth, cameraPosition.tilt),
+                        Animation(Animation.Type.SMOOTH, 0.2f), null
                     )
                 }
             }
@@ -145,9 +135,7 @@ fun MapScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     DisposableEffect(yandexMap) {
@@ -156,23 +144,17 @@ fun MapScreen(
         val tapListener = object : InputListener {
             override fun onMapTap(map: Map, point: Point) {
                 if (!workAreaBounds.contains(point)) return
-
                 when (viewModel.selectedAlgorithm.value) {
-                    RouteAlgorithm.ASTAR -> {
-                        when (viewModel.selectionMode.value) {
-                            PointSelectionMode.START -> viewModel.setStartPoint(point)
-                            PointSelectionMode.END -> viewModel.setEndPoint(point)
-                        }
+                    RouteAlgorithm.ASTAR -> when (viewModel.selectionMode.value) {
+                        PointSelectionMode.START -> viewModel.setStartPoint(point)
+                        PointSelectionMode.END -> viewModel.setEndPoint(point)
+                        PointSelectionMode.BARRIER -> viewModel.toggleBarrier(point)
                     }
-                    RouteAlgorithm.ANT -> {
-                        viewModel.setStartPoint(point)
-                    }
-
+                    RouteAlgorithm.ANT -> viewModel.setStartPoint(point)
                     RouteAlgorithm.ANOTHER -> Unit
                     RouteAlgorithm.DECISION_TREE -> Unit
                 }
             }
-
             override fun onMapLongTap(map: Map, point: Point) = Unit
         }
 
@@ -190,10 +172,7 @@ fun MapScreen(
                 strokeWidth = 6f
             }
         } else null
-
-        onDispose {
-            routePolyline?.let { yandexMap.mapObjects.remove(it) }
-        }
+        onDispose { routePolyline?.let { yandexMap.mapObjects.remove(it) } }
     }
 
     DisposableEffect(yandexMap, viewModel.startPoint.value, viewModel.endPoint.value) {
@@ -202,30 +181,16 @@ fun MapScreen(
 
         val startMarker = startPoint?.let { point ->
             yandexMap.mapObjects.addPlacemark(point).apply {
-                setIcon(
-                    imageProviderFromDrawable(context, R.drawable.startpoint),
-                    IconStyle().apply {
-                        anchor = PointF(0.5f, 1f)
-                        scale = 0.5f
-                    }
-                )
+                setIcon(imageProviderFromDrawable(context, R.drawable.startpoint), IconStyle().apply { anchor = PointF(0.5f, 1f); scale = 0.5f })
                 zIndex = 10f
             }
         }
-
         val endMarker = endPoint?.let { point ->
             yandexMap.mapObjects.addPlacemark(point).apply {
-                setIcon(
-                    imageProviderFromDrawable(context, R.drawable.endpoint),
-                    IconStyle().apply {
-                        anchor = PointF(0.5f, 1f)
-                        scale = 0.5f
-                    }
-                )
+                setIcon(imageProviderFromDrawable(context, R.drawable.endpoint), IconStyle().apply { anchor = PointF(0.5f, 1f); scale = 0.5f })
                 zIndex = 10f
             }
         }
-
         onDispose {
             startMarker?.let { yandexMap.mapObjects.remove(it) }
             endMarker?.let { yandexMap.mapObjects.remove(it) }
@@ -234,28 +199,47 @@ fun MapScreen(
 
     DisposableEffect(yandexMap, workAreaBounds) {
         val polygon = Polygon(LinearRing(workAreaBounds.toRectanglePoints()), emptyList())
-
         val rect = yandexMap.mapObjects.addPolygon(polygon).apply {
             fillColor = BorderFill.toArgb()
             strokeColor = BorderColor.toArgb()
             strokeWidth = 3f
         }
-
-        onDispose {
-            yandexMap.mapObjects.remove(rect)
-        }
+        onDispose { yandexMap.mapObjects.remove(rect) }
     }
 
+    val barriers = viewModel.barrierNodes.value
+    val animClosed = viewModel.animClosed.value
+    val animOpen = viewModel.animOpen.value
+    val animCurrent = viewModel.animCurrent.value
+    val animPath = viewModel.animPath.value
+
     Box(modifier = modifier.fillMaxSize()) {
-        MapCanvas(mapView = mapView)
+        AndroidView(modifier = Modifier.fillMaxSize(), factory = { mapView })
+
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { _ -> overlayView.apply { mapWindow = mapView.mapWindow } },
+            update = { view ->
+                view.grid = viewModel.currentGrid
+                view.barriers = barriers
+                view.closedSet = animClosed
+                view.openSet = animOpen
+                view.currentNode = animCurrent
+                view.pathNodes = animPath
+                view.invalidate()
+            }
+        )
 
         AlgorithmLayer(
             selectedAlgorithm = selectedAlgorithm,
             selectionMode = selectionMode,
             hasBothPoints = hasBothPoints,
+            pathStatus = viewModel.pathStatus,
+            isAnimating = viewModel.isAnimating,
             onSelectionModeChange = { viewModel.setSelectionMode(it) },
             onBuildRoute = { viewModel.buildRouteIfReady() },
-            onReset = { viewModel.resetPoints() }
+            onReset = { viewModel.resetPoints() },
+            onSkipAnimation = { viewModel.skipAnimation() }
         )
 
         AlgorithmSwitcher(
@@ -265,28 +249,27 @@ fun MapScreen(
             onDismiss = { isAlgorithmMenuOpen = false },
             onSelectAlgorithm = {
                 when (it) {
-                    RouteAlgorithm.ANOTHER -> {
-                        context.startActivity(Intent(context, AIMainActivity::class.java))
-                    }
-                    RouteAlgorithm.DECISION_TREE -> {
-                        context.startActivity(Intent(context, DecisionTreeActivity::class.java))
-                    }
-                    else -> {
-                        viewModel.selectAlgorithm(it)
-                    }
+                    RouteAlgorithm.ANOTHER -> context.startActivity(Intent(context, AIMainActivity::class.java))
+                    RouteAlgorithm.DECISION_TREE -> context.startActivity(Intent(context, DecisionTreeActivity::class.java))
+                    else -> viewModel.selectAlgorithm(it)
                 }
                 isAlgorithmMenuOpen = false
             }
         )
     }
-}
 
-@Composable
-private fun MapCanvas(mapView: MapView) {
-    AndroidView(
-        modifier = Modifier.fillMaxSize(),
-        factory = { mapView }
-    )
+    if (viewModel.showNoPathDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissNoPathDialog() },
+            title = { Text("Маршрут не найден") },
+            text = { Text("Все возможные пути перекрыты. Измените расположение барьеров или начальной/конечной точки и попробуйте снова.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissNoPathDialog() }) {
+                    Text("Понятно")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -302,55 +285,23 @@ private fun AlgorithmSwitcher(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Transparent)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) {
-                    onDismiss()
-                }
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onDismiss() }
         )
     }
 
     Column(
-        modifier = Modifier
-            .padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp)
-            .widthIn(max = 240.dp),
+        modifier = Modifier.padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp).widthIn(max = 240.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        Button(onClick = onMenuToggle) {
-            Text(text = "☰")
-        }
+        Button(onClick = onMenuToggle) { Text("☰") }
 
-        AnimatedVisibility(
-            visible = isOpen,
-            enter = slideInHorizontally { -it },
-            exit = slideOutHorizontally { -it }
-        ) {
+        AnimatedVisibility(visible = isOpen, enter = slideInHorizontally { -it }, exit = slideOutHorizontally { -it }) {
             Card(modifier = Modifier.padding(top = 8.dp)) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AlgorithmOptionButton(
-                        text = RouteAlgorithm.ASTAR.title,
-                        selected = selectedAlgorithm == RouteAlgorithm.ASTAR,
-                        onClick = { onSelectAlgorithm(RouteAlgorithm.ASTAR) }
-                    )
-                    AlgorithmOptionButton(
-                        text = RouteAlgorithm.ANT.title,
-                        selected = selectedAlgorithm == RouteAlgorithm.ANT,
-                        onClick = { onSelectAlgorithm(RouteAlgorithm.ANT) }
-                    )
-                    AlgorithmOptionButton(
-                        text = RouteAlgorithm.ANOTHER.title,
-                        selected = selectedAlgorithm == RouteAlgorithm.ANOTHER,
-                        onClick = { onSelectAlgorithm(RouteAlgorithm.ANOTHER) }
-                    )
-                    AlgorithmOptionButton(
-                        text = RouteAlgorithm.DECISION_TREE.title,
-                        selected = selectedAlgorithm == RouteAlgorithm.DECISION_TREE,
-                        onClick = { onSelectAlgorithm(RouteAlgorithm.DECISION_TREE) }
-                    )
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AlgorithmOptionButton(RouteAlgorithm.ASTAR.title, selectedAlgorithm == RouteAlgorithm.ASTAR) { onSelectAlgorithm(RouteAlgorithm.ASTAR) }
+                    AlgorithmOptionButton(RouteAlgorithm.ANT.title, selectedAlgorithm == RouteAlgorithm.ANT) { onSelectAlgorithm(RouteAlgorithm.ANT) }
+                    AlgorithmOptionButton(RouteAlgorithm.ANOTHER.title, selectedAlgorithm == RouteAlgorithm.ANOTHER) { onSelectAlgorithm(RouteAlgorithm.ANOTHER) }
+                    AlgorithmOptionButton(RouteAlgorithm.DECISION_TREE.title, selectedAlgorithm == RouteAlgorithm.DECISION_TREE) { onSelectAlgorithm(RouteAlgorithm.DECISION_TREE) }
                 }
             }
         }
@@ -362,54 +313,44 @@ private fun AlgorithmLayer(
     selectedAlgorithm: RouteAlgorithm,
     selectionMode: PointSelectionMode,
     hasBothPoints: Boolean,
+    pathStatus: PathStatus,
+    isAnimating: Boolean,
     onSelectionModeChange: (PointSelectionMode) -> Unit,
     onBuildRoute: () -> Unit,
-    onReset: () -> Unit
+    onReset: () -> Unit,
+    onSkipAnimation: () -> Unit
 ) {
     when (selectedAlgorithm) {
         RouteAlgorithm.ASTAR -> {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp),
+                modifier = Modifier.fillMaxSize().padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp),
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ModeButton(
-                        text = "Старт",
-                        selected = selectionMode == PointSelectionMode.START,
-                        onClick = { onSelectionModeChange(PointSelectionMode.START) }
-                    )
-                    ModeButton(
-                        text = "Финиш",
-                        selected = selectionMode == PointSelectionMode.END,
-                        onClick = { onSelectionModeChange(PointSelectionMode.END) }
-                    )
-                    Button(onClick = onBuildRoute, enabled = hasBothPoints) {
-                        Text(text = "Готово")
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ModeButton("Старт", selectionMode == PointSelectionMode.START) { onSelectionModeChange(PointSelectionMode.START) }
+                    ModeButton("Финиш", selectionMode == PointSelectionMode.END) { onSelectionModeChange(PointSelectionMode.END) }
+                    ModeButton("Барьеры", selectionMode == PointSelectionMode.BARRIER) { onSelectionModeChange(PointSelectionMode.BARRIER) }
+                    Button(onClick = onBuildRoute, enabled = hasBothPoints && !isAnimating) { Text("Готово") }
+                    if (isAnimating) {
+                        Button(onClick = onSkipAnimation) { Text("Пропустить") }
                     }
-                    Button(onClick = onReset) {
-                        Text(text = "Сброс")
+                    Button(onClick = onReset) { Text("Сброс") }
+                    when (pathStatus) {
+                        PathStatus.SEARCHING -> Text("Поиск...", color = Color(0xFFFFCC00), style = MaterialTheme.typography.bodySmall)
+                        PathStatus.FOUND -> Text("Путь найден", color = Color(0xFF00EE44), style = MaterialTheme.typography.bodySmall)
+                        PathStatus.NOT_FOUND -> Text("Путь не существует", color = Color(0xFFFF4444), style = MaterialTheme.typography.bodySmall)
+                        PathStatus.NONE -> Unit
                     }
                 }
             }
         }
 
         RouteAlgorithm.ANT -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 35.dp, end = 12.dp),
-                contentAlignment = Alignment.TopEnd
-            ) {
+            Box(modifier = Modifier.fillMaxSize().padding(top = 35.dp, end = 12.dp), contentAlignment = Alignment.TopEnd) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onBuildRoute) {
-                        Text("Построить\nмаршрут")
-                    }
-                    Button(onClick = onReset) {
-                        Text("Сброс")
-                    }
+                    Button(onClick = onBuildRoute) { Text("Построить\nмаршрут") }
+                    Button(onClick = onReset) { Text("Сброс") }
                 }
             }
         }
@@ -425,94 +366,51 @@ data class WorkAreaBounds(
     val minLongitude: Double,
     val maxLongitude: Double
 ) {
-    val centerPoint: Point
-        get() = Point(
-            (minLatitude + maxLatitude) / 2.0,
-            (minLongitude + maxLongitude) / 2.0
-        )
+    val centerPoint: Point get() = Point((minLatitude + maxLatitude) / 2.0, (minLongitude + maxLongitude) / 2.0)
 
-    fun contains(point: Point): Boolean {
-        return point.latitude in minLatitude..maxLatitude &&
-            point.longitude in minLongitude..maxLongitude
-    }
+    fun contains(point: Point) = point.latitude in minLatitude..maxLatitude && point.longitude in minLongitude..maxLongitude
 
-    fun toRectanglePoints(): List<Point> {
-        val northWest = Point(maxLatitude, minLongitude)
-        val northEast = Point(maxLatitude, maxLongitude)
-        val southEast = Point(minLatitude, maxLongitude)
-        val southWest = Point(minLatitude, minLongitude)
-        return listOf(northWest, northEast, southEast, southWest)
-    }
+    fun toRectanglePoints() = listOf(
+        Point(maxLatitude, minLongitude), Point(maxLatitude, maxLongitude),
+        Point(minLatitude, maxLongitude), Point(minLatitude, minLongitude)
+    )
 }
 
 private fun imageProviderFromDrawable(context: Context, resId: Int): ImageProvider {
-    val drawable = context.getDrawable(resId)
-        ?: return ImageProvider.fromResource(context, resId)
-
+    val drawable = context.getDrawable(resId) ?: return ImageProvider.fromResource(context, resId)
     val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 48
     val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 48
-
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     drawable.setBounds(0, 0, width, height)
     drawable.draw(canvas)
-
     return ImageProvider.fromBitmap(bitmap)
 }
 
 @Composable
-private fun AlgorithmOptionButton(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
+private fun AlgorithmOptionButton(text: String, selected: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-            contentColor = if (selected) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
+            containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
         )
-    ) {
-        Text(text = text)
-    }
+    ) { Text(text) }
 }
 
 @Composable
-private fun ModeButton(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
+private fun ModeButton(text: String, selected: Boolean, onClick: () -> Unit) {
     if (selected) {
-        Button(
-            onClick = onClick,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        ) {
-            Text(text = text)
-        }
+        Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) { Text(text) }
     } else {
-        OutlinedButton(onClick = onClick) {
-            Text(text = text)
-        }
+        OutlinedButton(onClick = onClick) { Text(text) }
     }
 }
 
-private val RouteAlgorithm.title: String
-    get() = when (this) {
-        RouteAlgorithm.ASTAR -> "A*"
-        RouteAlgorithm.ANT -> "Муравьи"
-        RouteAlgorithm.ANOTHER -> "Нейронка"
-        RouteAlgorithm.DECISION_TREE -> "Дерево решений"
-    }
+private val RouteAlgorithm.title: String get() = when (this) {
+    RouteAlgorithm.ASTAR -> "A*"
+    RouteAlgorithm.ANT -> "Муравьи"
+    RouteAlgorithm.ANOTHER -> "Нейронка"
+    RouteAlgorithm.DECISION_TREE -> "Дерево решений"
+}
