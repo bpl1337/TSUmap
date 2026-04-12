@@ -47,6 +47,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tsumobilkabeta.AI.AIMainActivity
 import com.example.tsumobilkabeta.AStar.AStarOverlayView
+import com.example.tsumobilkabeta.Ant.AntDrawableRoute
+import com.example.tsumobilkabeta.Ant.AntRoutePanel
+import com.example.tsumobilkabeta.Ant.AntViewModel
 import com.example.tsumobilkabeta.DecisionTree.DecisionTreeActivity
 import com.example.tsumobilkabeta.Genetic.DrawableRoute
 import com.example.tsumobilkabeta.Genetic.FoodRoutePanel
@@ -90,10 +93,12 @@ fun MapScreen(
     var isAlgorithmMenuOpen by remember { mutableStateOf(false) }
 
     val geneticViewModel: GeneticFoodViewModel = viewModel()
+    val antViewModel: AntViewModel = viewModel()
 
     LaunchedEffect(Unit) {
         viewModel.loadGrid(context)
         geneticViewModel.loadGrid(context)
+        antViewModel.loadGrid(context)
     }
 
     val mapView = remember {
@@ -160,7 +165,7 @@ fun MapScreen(
                         PointSelectionMode.END -> viewModel.setEndPoint(point)
                         PointSelectionMode.BARRIER -> viewModel.toggleBarrier(point)
                     }
-                    RouteAlgorithm.ANT -> viewModel.setStartPoint(point)
+                    RouteAlgorithm.ANT -> antViewModel.handleMapTap(point)
                     RouteAlgorithm.GENETIC -> geneticViewModel.handleMapTap(point)
                     RouteAlgorithm.ANOTHER -> Unit
                     RouteAlgorithm.DECISION_TREE -> Unit
@@ -264,6 +269,50 @@ fun MapScreen(
         onDispose { added.forEach { runCatching { yandexMap.mapObjects.remove(it) } } }
     }
 
+    val antStartPt by antViewModel.startPoint
+    val antDrawable by antViewModel.drawableRoute
+
+    DisposableEffect(yandexMap, antStartPt, selectedAlgorithm) {
+        val marker = if (antStartPt != null && selectedAlgorithm == RouteAlgorithm.ANT) {
+            yandexMap.mapObjects.addPlacemark(antStartPt!!).apply {
+                setIcon(
+                    imageProviderFromDrawable(context, R.drawable.startpoint),
+                    IconStyle().apply { anchor = PointF(0.5f, 1f); scale = 0.5f }
+                )
+                zIndex = 10f
+            }
+        } else null
+        onDispose { marker?.let { runCatching { yandexMap.mapObjects.remove(it) } } }
+    }
+
+    DisposableEffect(yandexMap, antDrawable, selectedAlgorithm) {
+        val added = mutableListOf<MapObject>()
+        val dr = antDrawable
+        if (dr != null && selectedAlgorithm == RouteAlgorithm.ANT) {
+            for (seg in dr.segments) {
+                if (seg.points.size >= 2) {
+                    val poly = yandexMap.mapObjects.addPolyline(Polyline(seg.points)).apply {
+                        setStrokeColor(seg.color); strokeWidth = 4f
+                    }
+                    added.add(poly)
+                    val arrows = addArrowhead(yandexMap, seg.points, seg.color)
+                    added.addAll(arrows)
+                }
+            }
+            for (m in dr.markers) {
+                val bmp = createCircleMarkerBitmap(m.label, m.color)
+                val pm = yandexMap.mapObjects.addPlacemark(m.point).apply {
+                    setIcon(ImageProvider.fromBitmap(bmp), IconStyle().apply {
+                        anchor = PointF(0.5f, 0.5f); scale = 0.8f
+                    })
+                    zIndex = 15f
+                }
+                added.add(pm)
+            }
+        }
+        onDispose { added.forEach { runCatching { yandexMap.mapObjects.remove(it) } } }
+    }
+
     val barriers = viewModel.barrierNodes.value
     val animClosed = viewModel.animClosed.value
     val animOpen = viewModel.animOpen.value
@@ -297,7 +346,8 @@ fun MapScreen(
             onBuildRoute = { viewModel.buildRouteIfReady() },
             onReset = { viewModel.resetPoints() },
             onSkipAnimation = { viewModel.skipAnimation() },
-            geneticViewModel = geneticViewModel
+            geneticViewModel = geneticViewModel,
+            antViewModel = antViewModel
         )
 
         AlgorithmSwitcher(
@@ -378,7 +428,8 @@ private fun AlgorithmLayer(
     onBuildRoute: () -> Unit,
     onReset: () -> Unit,
     onSkipAnimation: () -> Unit,
-    geneticViewModel: GeneticFoodViewModel? = null
+    geneticViewModel: GeneticFoodViewModel? = null,
+    antViewModel: AntViewModel? = null
 ) {
     when (selectedAlgorithm) {
         RouteAlgorithm.ASTAR -> {
@@ -407,10 +458,18 @@ private fun AlgorithmLayer(
         }
 
         RouteAlgorithm.ANT -> {
-            Box(modifier = Modifier.fillMaxSize().padding(top = 35.dp, end = 12.dp), contentAlignment = Alignment.TopEnd) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onBuildRoute) { Text("Построить\nмаршрут") }
-                    Button(onClick = onReset) { Text("Сброс") }
+            if (antViewModel != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 35.dp, start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    Card(modifier = Modifier.widthIn(max = 280.dp)) {
+                        Box(modifier = Modifier.padding(12.dp).heightIn(max = 520.dp)) {
+                            AntRoutePanel(viewModel = antViewModel)
+                        }
+                    }
                 }
             }
         }
@@ -516,6 +575,39 @@ private fun ModeButton(text: String, selected: Boolean, onClick: () -> Unit) {
     } else {
         OutlinedButton(onClick = onClick) { Text(text) }
     }
+}
+
+private fun createCircleMarkerBitmap(text: String, fillColor: Int, size: Int = 64): Bitmap {
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    val bgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = fillColor
+        style = android.graphics.Paint.Style.FILL
+    }
+    val borderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = 3f
+    }
+    val textPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        textSize = size * 0.42f
+        textAlign = android.graphics.Paint.Align.CENTER
+        isFakeBoldText = true
+    }
+
+    val cx = size / 2f
+    val cy = size / 2f
+    val radius = size / 2f - 4f
+
+    canvas.drawCircle(cx, cy, radius, bgPaint)
+    canvas.drawCircle(cx, cy, radius, borderPaint)
+
+    val fm = textPaint.fontMetrics
+    canvas.drawText(text, cx, cy - (fm.ascent + fm.descent) / 2, textPaint)
+
+    return bitmap
 }
 
 private val RouteAlgorithm.title: String get() = when (this) {

@@ -13,10 +13,6 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yandex.mapkit.geometry.Point
-import com.example.tsumobilkabeta.Ant.GridMap
-import com.example.tsumobilkabeta.Ant.Places
-import com.example.tsumobilkabeta.Ant.Reader
-import com.example.tsumobilkabeta.Ant.RouteBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -47,8 +43,6 @@ class NavigationViewModel : ViewModel() {
         private set
 
     private var grid: WalkabilityGrid? = null
-    private var antGrid: GridMap? = null
-    private var allPlaces: List<Places> = emptyList()
     private var animationJob: Job? = null
     private var computedPath: List<GridNode> = emptyList()
 
@@ -57,10 +51,7 @@ class NavigationViewModel : ViewModel() {
     fun loadGrid(context: Context) {
         if (gridLoaded) return
         grid = WalkabilityCsvLoader.load(context.applicationContext)
-        antGrid = Reader.readGridMap(context.applicationContext, "ant.csv")
-        allPlaces = Reader.readPlaces(context.applicationContext, "plasec.csv")
         gridLoaded = true
-        buildRouteIfReady()
     }
 
     fun setStartPoint(point: Point) { startPoint.value = point }
@@ -134,7 +125,7 @@ class NavigationViewModel : ViewModel() {
     fun buildRouteIfReady() {
         when (selectedAlgorithm.value) {
             RouteAlgorithm.ASTAR -> buildAstarRouteIfReady()
-            RouteAlgorithm.ANT -> buildRouteAntIfReady()
+            RouteAlgorithm.ANT -> Unit
             RouteAlgorithm.ANOTHER -> Unit
             RouteAlgorithm.DECISION_TREE -> Unit
             RouteAlgorithm.GENETIC -> Unit
@@ -190,36 +181,6 @@ class NavigationViewModel : ViewModel() {
         }
     }
 
-    fun buildRouteAntIfReady() {
-        val gridMap = antGrid ?: return
-        val userPoint = startPoint.value ?: return
-
-        val routeBuilder = RouteBuilder(gridMap)
-        val placesId = setOf(1, 2, 3, 4, 5, 6)
-        val selectedPlaces = allPlaces.filter { it.id in placesId }
-
-        val mappedPlaces = routeBuilder.mapPlaces(selectedPlaces, maxRadius = 15)
-        if (mappedPlaces.isEmpty()) { routePoints.value = emptyList(); return }
-
-        val (userX, userY) = GridProjection.pointToMeters(userPoint)
-        val userGridRaw = gridMap.QGisToGrid(userX, userY)
-        val userGrid = gridMap.snapToNear(userGridRaw, maxRadius = 20) ?: run {
-            routePoints.value = emptyList(); return
-        }
-
-        val result = routeBuilder.buildRoute(
-            userPoint = userGrid,
-            places = mappedPlaces,
-            antCount = 20,
-            iter = 150,
-            alpha = 1.0,
-            beta = 4.0,
-            evaporation = 0.4,
-            q = 100.0,
-            end = false
-        )
-        routePoints.value = result.test.map { (x, y) -> GridProjection.metersToPoint(x, y) }
-    }
 }
 
 enum class PointSelectionMode { START, END, BARRIER }
