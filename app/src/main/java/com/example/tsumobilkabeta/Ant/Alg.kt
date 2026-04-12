@@ -1,5 +1,5 @@
 package com.example.tsumobilkabeta.Ant
-import yads.ev
+
 import android.content.Context
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -158,26 +158,14 @@ object Reader {
             BufferedReader(InputStreamReader(input)).readLines()
         }.filter { it.isNotBlank() }
     }
-    fun readPlaces(context: Context, name: String): List<Places> {
-        return readAsset(context,name).map{line->
-            val parts = line.split(",")
-            Places(
-                id = parts[2].trim().toInt(),
-                name = parts[3].trim(),
-                x = parts[0].trim().toDouble(),
-                y = parts[1].trim().toDouble()
-            )
-        }
-    }
-
     fun readGridMap(context: Context, name: String): GridMap{
-        val rows = readAsset(context,name).map{line->
+        val rows = readAsset(context,name).mapNotNull { line ->
             val parts = line.split(",")
-            Triple(
-                parts[0].trim().toDouble(),
-                parts[1].trim().toDouble(),
-                parts[2].trim().toInt()
-            )
+            if (parts.size < 3) return@mapNotNull null
+            val x = parts[0].trim().toDoubleOrNull() ?: return@mapNotNull null
+            val y = parts[1].trim().toDoubleOrNull() ?: return@mapNotNull null
+            val pass = parts[2].trim().toIntOrNull() ?: return@mapNotNull null
+            Triple(x, y, pass)
         }
         val xs = rows.map{it.first}.distinct().sorted()
         val ys = rows.map{it.second}.distinct().sorted()
@@ -307,6 +295,18 @@ class RouteBuilder(public val gridMap: GridMap ){
             totalDistance += path.dist
         }
         return Path(fullPoints,totalDistance)
+    }
+
+    fun restoreSegments(order: IntArray, points: List<GridPoint>): List<Path>? {
+        if (order.isEmpty()) return null
+        val segments = mutableListOf<Path>()
+        for (i in 0 until order.size - 1) {
+            val from = points[order[i]]
+            val to = points[order[i + 1]]
+            val path = gridMap.bfs(from, to) ?: return null
+            segments.add(path)
+        }
+        return segments
     }
 }
 
