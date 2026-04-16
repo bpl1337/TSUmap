@@ -18,7 +18,6 @@ data class Dataset(
 )
 
 object DecisionTreeBuilder {
-
     fun build(data: Dataset): TreeNode =
         buildNode(data.rows, data.attributes, data.target)
 
@@ -55,7 +54,6 @@ object DecisionTreeBuilder {
 }
 
 object TreePruner {
-
     fun prune(node: TreeNode, data: List<Map<String, String>>, target: String): TreeNode {
         if (node is TreeNode.Leaf) return node
         node as TreeNode.Split
@@ -92,7 +90,7 @@ fun classifyWithPath(node: TreeNode, record: Map<String, String>): Classificatio
         path += cur.attribute to v
         cur = cur.children[v] ?: break
     }
-    val label = if (cur is TreeNode.Leaf) (cur as TreeNode.Leaf).label
+    val label = if (cur is TreeNode.Leaf) cur.label
                 else (cur as TreeNode.Split).majorityLabel
     return ClassificationResult(label, path)
 }
