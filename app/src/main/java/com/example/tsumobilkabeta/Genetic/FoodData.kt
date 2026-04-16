@@ -8,7 +8,7 @@ enum class FoodCategory {
     MAIN_DISH, SIDE_DISH, DRINK, DESSERT, SUPPLIES
 }
 
-data class FoodEstablishment(
+data class FoodEstablishment (
     val id: Int,
     val name: String,
     val location: Point,
@@ -19,8 +19,8 @@ data class FoodEstablishment(
     val closeMinute: Int
 ) {
     fun isOpenAt(hour: Int, minute: Int): Boolean {
-        val now   = hour * 60 + minute
-        val open  = openHour  * 60 + openMinute
+        val now = hour * 60 + minute
+        val open = openHour * 60 + openMinute
         val close = closeHour * 60 + closeMinute
         return now in open until close
     }
@@ -212,9 +212,6 @@ object FoodDatabase {
 
     fun findEstablishmentsForItem(itemName: String): List<FoodEstablishment> =
         allEstablishments.filter { est -> est.menu.any { it.name == itemName } }
-
-    fun getAllMenuItems(): List<String> =
-        allEstablishments.flatMap { est -> est.menu.map { it.name } }.distinct().sorted()
 
     fun categoryDisplayName(category: FoodCategory) = when (category) {
         FoodCategory.MAIN_DISH -> "Основные блюда"

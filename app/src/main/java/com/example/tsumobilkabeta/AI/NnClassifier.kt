@@ -4,8 +4,8 @@ import android.content.Context
 
 class NnClassifier(private val context: Context) {
     private val INPUT_SIZE = 2500
-    private val HIDDEN1 = 256
-    private val HIDDEN2 = 128
+    private val HIDDEN1 = 128
+    private val HIDDEN2 = 64
     private val OUTPUT_SIZE = 10
 
     private var w1: FloatArray? = null
