@@ -78,7 +78,7 @@ fun RatingApp(classifier: NnClassifier) {
         }
         delay(80)
         val result = withContext(Dispatchers.Default) {
-            val pixels = processDrawing2px(currentPath, canvasSizePx)
+            val pixels = processDrawing2px(currentPath)
             val (digit, conf) = classifier.classifyWithConfidence(pixels)
             Triple(digit, conf, floatArrayToBitmap(pixels))
         }
@@ -206,7 +206,7 @@ fun RatingApp(classifier: NnClassifier) {
                                 Button(
                                     onClick = {
                                         if (!currentPath.isEmpty) {
-                                            val pixels = processDrawing2px(currentPath, canvasSizePx)
+                                            val pixels = processDrawing2px(currentPath)
                                             saveSample(context, digit, pixels)
                                             countsPerDigit = countsPerDigit.copyOf().also { it[digit]++ }
                                             currentPath = Path()

@@ -11,21 +11,21 @@ fun floatArrayToBitmap(data: FloatArray): ImageBitmap {
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     for (y in 0 until size) {
         for (x in 0 until size) {
-            val color = if (data[y * size + x] == 1.0f) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+            val color = if (data[y * size + x] == 1.0f) Color.BLACK else Color.WHITE
             bitmap.setPixel(x, y, color)
         }
     }
     return bitmap.asImageBitmap()
 }
 
-fun processDrawing2px(composePath: Path, originalSize: Float): FloatArray {
-    val androidPath = android.graphics.Path(composePath.asAndroidPath())
+fun processDrawing2px(composePath: Path): FloatArray {
+    val androidPath = Path(composePath.asAndroidPath())
     val bounds = RectF()
     androidPath.computeBounds(bounds, true)
 
     val bitmap = Bitmap.createBitmap(50, 50, Bitmap.Config.ARGB_8888)
-    val canvas = android.graphics.Canvas(bitmap)
-    canvas.drawColor(android.graphics.Color.WHITE)
+    val canvas = Canvas(bitmap)
+    canvas.drawColor(Color.WHITE)
 
     val drawSize = maxOf(bounds.width(), bounds.height())
     if (drawSize <= 0f) return FloatArray(2500)
