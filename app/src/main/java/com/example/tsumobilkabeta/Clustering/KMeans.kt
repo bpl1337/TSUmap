@@ -12,29 +12,49 @@ object KMeans{
     fun clusterize(
         establishments: List<Establishments>,
         k: Int
-    ): List<Cluster>{
+    ): List<Cluster> {
 
-        var center = establishments.shuffled(Random(System.currentTimeMillis())).take(k).map{it.coordinate}
+        var centers = establishments
+            .shuffled(Random(System.currentTimeMillis())).take(k).map { it.coordinate }
 
-        repeat(100){
-            val groups = establishments.groupBy { establishments->center.minBy{center->dist(establishments.coordinate,center)} }
+        repeat(100) {
+            val groupedItems = List(k) { mutableListOf<Establishments>() }
 
-            val newCenters = groups.values.map{clusterItems -> findCenters(clusterItems)}
-
-            if (newCenters==center){
-                return groups.map{(center,items)->
-                    Cluster(center=center,items=items)}
+            establishments.forEach { establishment ->
+                val nearestCenterIndex = centers.indices.minBy { index ->
+                    dist(establishment.coordinate, centers[index])
+                }
+                groupedItems[nearestCenterIndex].add(establishment)
             }
 
-            center=newCenters
+            val newCenters = centers.mapIndexed { index, oldCenter ->
+                val items = groupedItems[index]
+                if (items.isEmpty()) oldCenter else findCenter(items)
+            }
+
+            if (newCenters == centers) {
+                return centers.mapIndexed { index, center ->
+                    Cluster(center = center, items = groupedItems[index])
+                }
+            }
+
+            centers = newCenters
         }
 
-        val groups = establishments.groupBy { establishments -> center.minBy { center -> dist(establishments.coordinate,center) } }
+        val groupedItems = List(k) { mutableListOf<Establishments>() }
 
-        return groups.map{(center,items)->
-            Cluster(center=center,items=items)
+        establishments.forEach { establishment ->
+            val nearestCenterIndex = centers.indices.minBy { index ->
+                dist(establishment.coordinate, centers[index])
+            }
+            groupedItems[nearestCenterIndex].add(establishment)
+        }
+
+        return centers.mapIndexed { index, center ->
+            Cluster(center = center, items = groupedItems[index])
         }
     }
+
 }
 
 
@@ -44,7 +64,7 @@ fun dist(a: Point,b:Point): Double{
     return sqrt(dx*dx+dy*dy)
 }
 
-fun findCenters(items: List<Establishments>): Point{
+fun findCenter(items: List<Establishments>): Point{
     val x = items.map{it.coordinate.x}.average()
     val y = items.map{it.coordinate.y}.average()
     return Point(x,y)

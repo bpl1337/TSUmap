@@ -50,6 +50,8 @@ import com.example.tsumobilkabeta.AStar.AStarOverlayView
 import com.example.tsumobilkabeta.Ant.AntDrawableRoute
 import com.example.tsumobilkabeta.Ant.AntRoutePanel
 import com.example.tsumobilkabeta.Ant.AntViewModel
+import com.example.tsumobilkabeta.Clustering.Cluster
+import com.example.tsumobilkabeta.Clustering.ClusteringViewModel
 import com.example.tsumobilkabeta.DecisionTree.DecisionTreeActivity
 import com.example.tsumobilkabeta.Genetic.DrawableRoute
 import com.example.tsumobilkabeta.Genetic.FoodRoutePanel
@@ -71,6 +73,8 @@ import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.map.MapObject
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
+import com.example.tsumobilkabeta.Clustering.ClusteringPanel
+
 
 @Composable
 fun MapScreen(
@@ -94,6 +98,7 @@ fun MapScreen(
 
     val geneticViewModel: GeneticFoodViewModel = viewModel()
     val antViewModel: AntViewModel = viewModel()
+    val clusteringViewModel: ClusteringViewModel= viewModel()
 
     LaunchedEffect(Unit) {
         viewModel.loadGrid(context)
@@ -169,6 +174,7 @@ fun MapScreen(
                     RouteAlgorithm.GENETIC -> geneticViewModel.handleMapTap(point)
                     RouteAlgorithm.ANOTHER -> Unit
                     RouteAlgorithm.DECISION_TREE -> Unit
+                    RouteAlgorithm.CLUSTERING-> Unit
                 }
             }
             override fun onMapLongTap(map: Map, point: Point) = Unit
@@ -313,6 +319,73 @@ fun MapScreen(
         onDispose { added.forEach { runCatching { yandexMap.mapObjects.remove(it) } } }
     }
 
+    val clusters = clusteringViewModel.clusters
+
+    DisposableEffect(yandexMap, clusters, selectedAlgorithm) {
+        val added = mutableListOf<MapObject>()
+
+        if (selectedAlgorithm == RouteAlgorithm.CLUSTERING && clusters.isNotEmpty()) {
+            val colors = listOf(
+                0xFFE53935.toInt(),
+                0xFF1E88E5.toInt(),
+                0xFF43A047.toInt(),
+                0xFFFB8C00.toInt(),
+                0xFF8E24AA.toInt(),
+                0xFF00897B.toInt()
+            )
+
+            clusters.forEachIndexed { index, cluster ->
+                val color = colors[index % colors.size]
+
+                cluster.items.forEach { establishment ->
+                    val point = Point(
+                        establishment.coordinate.y,
+                        establishment.coordinate.x
+                    )
+
+                    val placemark = yandexMap.mapObjects.addPlacemark(point).apply {
+                        setIcon(
+                            ImageProvider.fromBitmap(
+                                createCircleMarkerBitmap("${index + 1}", color)
+                            ),
+                            IconStyle().apply {
+                                anchor = PointF(0.5f, 0.5f)
+                                scale = 0.8f
+                            }
+                        )
+                        zIndex = 12f
+                    }
+
+                    added.add(placemark)
+                }
+
+                val centerPoint = Point(
+                    cluster.center.y,
+                    cluster.center.x
+                )
+
+                val centerPlacemark = yandexMap.mapObjects.addPlacemark(centerPoint).apply {
+                    setIcon(
+                        ImageProvider.fromBitmap(
+                            createCircleMarkerBitmap("C", color)
+                        ),
+                        IconStyle().apply {
+                            anchor = PointF(0.5f, 0.5f)
+                            scale = 0.9f
+                        }
+                    )
+                    zIndex = 15f
+                }
+
+                added.add(centerPlacemark)
+            }
+        }
+
+        onDispose {
+            added.forEach { runCatching { yandexMap.mapObjects.remove(it) } }
+        }
+    }
+
     val barriers = viewModel.barrierNodes.value
     val animClosed = viewModel.animClosed.value
     val animOpen = viewModel.animOpen.value
@@ -347,7 +420,9 @@ fun MapScreen(
             onReset = { viewModel.resetPoints() },
             onSkipAnimation = { viewModel.skipAnimation() },
             geneticViewModel = geneticViewModel,
-            antViewModel = antViewModel
+            antViewModel = antViewModel,
+            clusteringViewModel = clusteringViewModel
+
         )
 
         AlgorithmSwitcher(
@@ -411,6 +486,7 @@ private fun AlgorithmSwitcher(
                     AlgorithmOptionButton(RouteAlgorithm.GENETIC.title, selectedAlgorithm == RouteAlgorithm.GENETIC) { onSelectAlgorithm(RouteAlgorithm.GENETIC) }
                     AlgorithmOptionButton(RouteAlgorithm.ANOTHER.title, selectedAlgorithm == RouteAlgorithm.ANOTHER) { onSelectAlgorithm(RouteAlgorithm.ANOTHER) }
                     AlgorithmOptionButton(RouteAlgorithm.DECISION_TREE.title, selectedAlgorithm == RouteAlgorithm.DECISION_TREE) { onSelectAlgorithm(RouteAlgorithm.DECISION_TREE) }
+                    AlgorithmOptionButton(RouteAlgorithm.CLUSTERING.title,selectedAlgorithm== RouteAlgorithm.CLUSTERING) {onSelectAlgorithm(RouteAlgorithm.CLUSTERING) }
                 }
             }
         }
@@ -429,7 +505,8 @@ private fun AlgorithmLayer(
     onReset: () -> Unit,
     onSkipAnimation: () -> Unit,
     geneticViewModel: GeneticFoodViewModel? = null,
-    antViewModel: AntViewModel? = null
+    antViewModel: AntViewModel? = null,
+    clusteringViewModel: ClusteringViewModel? = null
 ) {
     when (selectedAlgorithm) {
         RouteAlgorithm.ASTAR -> {
@@ -473,6 +550,24 @@ private fun AlgorithmLayer(
                 }
             }
         }
+
+        RouteAlgorithm.CLUSTERING -> {
+            if (clusteringViewModel != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 35.dp, start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    Card(modifier = Modifier.widthIn(max = 280.dp)) {
+                        Box(modifier = Modifier.padding(12.dp).heightIn(max = 320.dp)) {
+                            ClusteringPanel(viewModel = clusteringViewModel)
+                        }
+                    }
+                }
+            }
+        }
+
 
         RouteAlgorithm.GENETIC -> {
             if (geneticViewModel != null) {
@@ -616,4 +711,5 @@ private val RouteAlgorithm.title: String get() = when (this) {
     RouteAlgorithm.GENETIC -> "Генетика (еда)"
     RouteAlgorithm.ANOTHER -> "Нейронка"
     RouteAlgorithm.DECISION_TREE -> "Дерево решений"
+    RouteAlgorithm.CLUSTERING -> "Кластеризация"
 }
