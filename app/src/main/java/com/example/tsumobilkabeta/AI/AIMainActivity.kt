@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.example.tsumobilkabeta.floatArrayToBitmap
 import com.example.tsumobilkabeta.ui.theme.TSUMapTheme
 import java.io.File
-private const val ADMIN_MODE = true
+private const val ADMIN_MODE = false
 
 class AIMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

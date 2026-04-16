@@ -44,7 +44,6 @@ class NnClassifier(private val context: Context) {
             false
         }
     }
-    fun classify(input: FloatArray): Int = classifyWithConfidence(input).first
 
     fun classifyWithConfidence(input: FloatArray): Pair<Int, Float> {
         if (!initialized || input.size != INPUT_SIZE) return Pair(-1, 0f)
