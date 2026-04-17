@@ -1,4 +1,4 @@
-package com.example.tsumobilkabeta.Clustering
+package com.example.tsumobilkabeta.Clustering.model
 import com.example.tsumobilkabeta.Genetic.FoodDatabase
 
 data class Point(

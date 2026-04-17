@@ -47,13 +47,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tsumobilkabeta.AI.AIMainActivity
 import com.example.tsumobilkabeta.AStar.AStarOverlayView
-import com.example.tsumobilkabeta.Ant.AntDrawableRoute
 import com.example.tsumobilkabeta.Ant.AntRoutePanel
 import com.example.tsumobilkabeta.Ant.AntViewModel
-import com.example.tsumobilkabeta.Clustering.Cluster
-import com.example.tsumobilkabeta.Clustering.ClusteringViewModel
+import com.example.tsumobilkabeta.Clustering.UI.ClusteringViewModel
 import com.example.tsumobilkabeta.DecisionTree.DecisionTreeActivity
-import com.example.tsumobilkabeta.Genetic.DrawableRoute
 import com.example.tsumobilkabeta.Genetic.FoodRoutePanel
 import com.example.tsumobilkabeta.Genetic.GeneticFoodViewModel
 import com.example.tsumobilkabeta.ui.theme.BorderColor
@@ -73,7 +70,8 @@ import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.map.MapObject
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
-import com.example.tsumobilkabeta.Clustering.ClusteringPanel
+import com.example.tsumobilkabeta.Clustering.UI.ClusteringPanel
+import com.example.tsumobilkabeta.Clustering.model.ClusteringMode
 
 
 @Composable
@@ -98,7 +96,7 @@ fun MapScreen(
 
     val geneticViewModel: GeneticFoodViewModel = viewModel()
     val antViewModel: AntViewModel = viewModel()
-    val clusteringViewModel: ClusteringViewModel= viewModel()
+    val clusteringViewModel: ClusteringViewModel = viewModel()
 
     LaunchedEffect(Unit) {
         viewModel.loadGrid(context)
@@ -127,7 +125,9 @@ fun MapScreen(
             ) {
                 overlayView.post { overlayView.invalidate() }
                 if (!finished) return
-                if (isAutoCorrecting[0]) { isAutoCorrecting[0] = false; return }
+                if (isAutoCorrecting[0]) {
+                    isAutoCorrecting[0] = false; return
+                }
 
                 val clampedLat = cameraPosition.target.latitude.coerceIn(
                     workAreaBounds.minLatitude, workAreaBounds.maxLatitude
@@ -138,7 +138,12 @@ fun MapScreen(
                 if (clampedLat != cameraPosition.target.latitude || clampedLon != cameraPosition.target.longitude) {
                     isAutoCorrecting[0] = true
                     map.move(
-                        CameraPosition(Point(clampedLat, clampedLon), cameraPosition.zoom, cameraPosition.azimuth, cameraPosition.tilt),
+                        CameraPosition(
+                            Point(clampedLat, clampedLon),
+                            cameraPosition.zoom,
+                            cameraPosition.azimuth,
+                            cameraPosition.tilt
+                        ),
                         Animation(Animation.Type.SMOOTH, 0.2f), null
                     )
                 }
@@ -170,13 +175,15 @@ fun MapScreen(
                         PointSelectionMode.END -> viewModel.setEndPoint(point)
                         PointSelectionMode.BARRIER -> viewModel.toggleBarrier(point)
                     }
+
                     RouteAlgorithm.ANT -> antViewModel.handleMapTap(point)
                     RouteAlgorithm.GENETIC -> geneticViewModel.handleMapTap(point)
                     RouteAlgorithm.ANOTHER -> Unit
                     RouteAlgorithm.DECISION_TREE -> Unit
-                    RouteAlgorithm.CLUSTERING-> Unit
+                    RouteAlgorithm.CLUSTERING -> Unit
                 }
             }
+
             override fun onMapLongTap(map: Map, point: Point) = Unit
         }
 
@@ -203,13 +210,17 @@ fun MapScreen(
 
         val startMarker = startPoint?.let { point ->
             yandexMap.mapObjects.addPlacemark(point).apply {
-                setIcon(imageProviderFromDrawable(context, R.drawable.startpoint), IconStyle().apply { anchor = PointF(0.5f, 1f); scale = 0.5f })
+                setIcon(
+                    imageProviderFromDrawable(context, R.drawable.startpoint),
+                    IconStyle().apply { anchor = PointF(0.5f, 1f); scale = 0.5f })
                 zIndex = 10f
             }
         }
         val endMarker = endPoint?.let { point ->
             yandexMap.mapObjects.addPlacemark(point).apply {
-                setIcon(imageProviderFromDrawable(context, R.drawable.endpoint), IconStyle().apply { anchor = PointF(0.5f, 1f); scale = 0.5f })
+                setIcon(
+                    imageProviderFromDrawable(context, R.drawable.endpoint),
+                    IconStyle().apply { anchor = PointF(0.5f, 1f); scale = 0.5f })
                 zIndex = 10f
             }
         }
@@ -230,7 +241,7 @@ fun MapScreen(
     }
 
     val geneticDrawable by geneticViewModel.drawableRoute
-    val geneticStartPt  by geneticViewModel.startPoint
+    val geneticStartPt by geneticViewModel.startPoint
 
     DisposableEffect(yandexMap, geneticStartPt, selectedAlgorithm) {
         val marker = if (geneticStartPt != null && selectedAlgorithm == RouteAlgorithm.GENETIC) {
@@ -319,9 +330,11 @@ fun MapScreen(
         onDispose { added.forEach { runCatching { yandexMap.mapObjects.remove(it) } } }
     }
 
-    val clusters = clusteringViewModel.clusters
+    val clusters = clusteringViewModel.displayedClusters
+    val changedIds = clusteringViewModel.changedEstablishmentIds
+    val clusteringMode = clusteringViewModel.mode
 
-    DisposableEffect(yandexMap, clusters, selectedAlgorithm) {
+    DisposableEffect(yandexMap, clusters, changedIds, clusteringMode, selectedAlgorithm) {
         val added = mutableListOf<MapObject>()
 
         if (selectedAlgorithm == RouteAlgorithm.CLUSTERING && clusters.isNotEmpty()) {
@@ -343,17 +356,26 @@ fun MapScreen(
                         establishment.coordinate.x
                     )
 
+                    val label = if (
+                        clusteringMode == ClusteringMode.COMPARISON &&
+                        changedIds.contains(establishment.id)
+                    ) {
+                        "!"
+                    } else {
+                        "${index + 1}"
+                    }
+
                     val placemark = yandexMap.mapObjects.addPlacemark(point).apply {
                         setIcon(
                             ImageProvider.fromBitmap(
-                                createCircleMarkerBitmap("${index + 1}", color)
+                                createCircleMarkerBitmap(label, color)
                             ),
                             IconStyle().apply {
                                 anchor = PointF(0.5f, 0.5f)
-                                scale = 0.8f
+                                scale = if (label == "!") 1.0f else 0.8f
                             }
                         )
-                        zIndex = 12f
+                        zIndex = if (label == "!") 14f else 12f
                     }
 
                     added.add(placemark)
@@ -432,8 +454,20 @@ fun MapScreen(
             onDismiss = { isAlgorithmMenuOpen = false },
             onSelectAlgorithm = {
                 when (it) {
-                    RouteAlgorithm.ANOTHER -> context.startActivity(Intent(context, AIMainActivity::class.java))
-                    RouteAlgorithm.DECISION_TREE -> context.startActivity(Intent(context, DecisionTreeActivity::class.java))
+                    RouteAlgorithm.ANOTHER -> context.startActivity(
+                        Intent(
+                            context,
+                            AIMainActivity::class.java
+                        )
+                    )
+
+                    RouteAlgorithm.DECISION_TREE -> context.startActivity(
+                        Intent(
+                            context,
+                            DecisionTreeActivity::class.java
+                        )
+                    )
+
                     else -> viewModel.selectAlgorithm(it)
                 }
                 isAlgorithmMenuOpen = false
@@ -468,25 +502,53 @@ private fun AlgorithmSwitcher(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Transparent)
-                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onDismiss() }
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) { onDismiss() }
         )
     }
 
     Column(
-        modifier = Modifier.padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp).widthIn(max = 240.dp),
+        modifier = Modifier
+            .padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp)
+            .widthIn(max = 240.dp),
         horizontalAlignment = Alignment.Start
     ) {
         Button(onClick = onMenuToggle) { Text("☰") }
 
-        AnimatedVisibility(visible = isOpen, enter = slideInHorizontally { -it }, exit = slideOutHorizontally { -it }) {
+        AnimatedVisibility(
+            visible = isOpen,
+            enter = slideInHorizontally { -it },
+            exit = slideOutHorizontally { -it }) {
             Card(modifier = Modifier.padding(top = 8.dp)) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AlgorithmOptionButton(RouteAlgorithm.ASTAR.title, selectedAlgorithm == RouteAlgorithm.ASTAR) { onSelectAlgorithm(RouteAlgorithm.ASTAR) }
-                    AlgorithmOptionButton(RouteAlgorithm.ANT.title, selectedAlgorithm == RouteAlgorithm.ANT) { onSelectAlgorithm(RouteAlgorithm.ANT) }
-                    AlgorithmOptionButton(RouteAlgorithm.GENETIC.title, selectedAlgorithm == RouteAlgorithm.GENETIC) { onSelectAlgorithm(RouteAlgorithm.GENETIC) }
-                    AlgorithmOptionButton(RouteAlgorithm.ANOTHER.title, selectedAlgorithm == RouteAlgorithm.ANOTHER) { onSelectAlgorithm(RouteAlgorithm.ANOTHER) }
-                    AlgorithmOptionButton(RouteAlgorithm.DECISION_TREE.title, selectedAlgorithm == RouteAlgorithm.DECISION_TREE) { onSelectAlgorithm(RouteAlgorithm.DECISION_TREE) }
-                    AlgorithmOptionButton(RouteAlgorithm.CLUSTERING.title,selectedAlgorithm== RouteAlgorithm.CLUSTERING) {onSelectAlgorithm(RouteAlgorithm.CLUSTERING) }
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AlgorithmOptionButton(
+                        RouteAlgorithm.ASTAR.title,
+                        selectedAlgorithm == RouteAlgorithm.ASTAR
+                    ) { onSelectAlgorithm(RouteAlgorithm.ASTAR) }
+                    AlgorithmOptionButton(
+                        RouteAlgorithm.ANT.title,
+                        selectedAlgorithm == RouteAlgorithm.ANT
+                    ) { onSelectAlgorithm(RouteAlgorithm.ANT) }
+                    AlgorithmOptionButton(
+                        RouteAlgorithm.GENETIC.title,
+                        selectedAlgorithm == RouteAlgorithm.GENETIC
+                    ) { onSelectAlgorithm(RouteAlgorithm.GENETIC) }
+                    AlgorithmOptionButton(
+                        RouteAlgorithm.ANOTHER.title,
+                        selectedAlgorithm == RouteAlgorithm.ANOTHER
+                    ) { onSelectAlgorithm(RouteAlgorithm.ANOTHER) }
+                    AlgorithmOptionButton(
+                        RouteAlgorithm.DECISION_TREE.title,
+                        selectedAlgorithm == RouteAlgorithm.DECISION_TREE
+                    ) { onSelectAlgorithm(RouteAlgorithm.DECISION_TREE) }
+                    AlgorithmOptionButton(
+                        RouteAlgorithm.CLUSTERING.title,
+                        selectedAlgorithm == RouteAlgorithm.CLUSTERING
+                    ) { onSelectAlgorithm(RouteAlgorithm.CLUSTERING) }
                 }
             }
         }
@@ -511,23 +573,55 @@ private fun AlgorithmLayer(
     when (selectedAlgorithm) {
         RouteAlgorithm.ASTAR -> {
             Column(
-                modifier = Modifier.fillMaxSize().padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp),
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top
             ) {
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ModeButton("Старт", selectionMode == PointSelectionMode.START) { onSelectionModeChange(PointSelectionMode.START) }
-                    ModeButton("Финиш", selectionMode == PointSelectionMode.END) { onSelectionModeChange(PointSelectionMode.END) }
-                    ModeButton("Барьеры", selectionMode == PointSelectionMode.BARRIER) { onSelectionModeChange(PointSelectionMode.BARRIER) }
-                    Button(onClick = onBuildRoute, enabled = hasBothPoints && !isAnimating) { Text("Готово") }
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ModeButton(
+                        "Старт",
+                        selectionMode == PointSelectionMode.START
+                    ) { onSelectionModeChange(PointSelectionMode.START) }
+                    ModeButton(
+                        "Финиш",
+                        selectionMode == PointSelectionMode.END
+                    ) { onSelectionModeChange(PointSelectionMode.END) }
+                    ModeButton(
+                        "Барьеры",
+                        selectionMode == PointSelectionMode.BARRIER
+                    ) { onSelectionModeChange(PointSelectionMode.BARRIER) }
+                    Button(
+                        onClick = onBuildRoute,
+                        enabled = hasBothPoints && !isAnimating
+                    ) { Text("Готово") }
                     if (isAnimating) {
                         Button(onClick = onSkipAnimation) { Text("Пропустить") }
                     }
                     Button(onClick = onReset) { Text("Сброс") }
                     when (pathStatus) {
-                        PathStatus.SEARCHING -> Text("Поиск...", color = Color(0xFFFFCC00), style = MaterialTheme.typography.bodySmall)
-                        PathStatus.FOUND -> Text("Путь найден", color = Color(0xFF00EE44), style = MaterialTheme.typography.bodySmall)
-                        PathStatus.NOT_FOUND -> Text("Путь не существует", color = Color(0xFFFF4444), style = MaterialTheme.typography.bodySmall)
+                        PathStatus.SEARCHING -> Text(
+                            "Поиск...",
+                            color = Color(0xFFFFCC00),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        PathStatus.FOUND -> Text(
+                            "Путь найден",
+                            color = Color(0xFF00EE44),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        PathStatus.NOT_FOUND -> Text(
+                            "Путь не существует",
+                            color = Color(0xFFFF4444),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
                         PathStatus.NONE -> Unit
                     }
                 }
@@ -543,7 +637,9 @@ private fun AlgorithmLayer(
                     contentAlignment = Alignment.TopEnd
                 ) {
                     Card(modifier = Modifier.widthIn(max = 280.dp)) {
-                        Box(modifier = Modifier.padding(12.dp).heightIn(max = 520.dp)) {
+                        Box(modifier = Modifier
+                            .padding(12.dp)
+                            .heightIn(max = 520.dp)) {
                             AntRoutePanel(viewModel = antViewModel)
                         }
                     }
@@ -560,7 +656,9 @@ private fun AlgorithmLayer(
                     contentAlignment = Alignment.TopEnd
                 ) {
                     Card(modifier = Modifier.widthIn(max = 280.dp)) {
-                        Box(modifier = Modifier.padding(12.dp).heightIn(max = 320.dp)) {
+                        Box(modifier = Modifier
+                            .padding(12.dp)
+                            .heightIn(max = 520.dp)) {
                             ClusteringPanel(viewModel = clusteringViewModel)
                         }
                     }
@@ -578,7 +676,9 @@ private fun AlgorithmLayer(
                     contentAlignment = Alignment.TopEnd
                 ) {
                     Card(modifier = Modifier.widthIn(max = 280.dp)) {
-                        Box(modifier = Modifier.padding(12.dp).heightIn(max = 480.dp)) {
+                        Box(modifier = Modifier
+                            .padding(12.dp)
+                            .heightIn(max = 480.dp)) {
                             FoodRoutePanel(viewModel = geneticViewModel)
                         }
                     }
@@ -594,7 +694,7 @@ private fun AlgorithmLayer(
 private fun addArrowhead(yandexMap: Map, points: List<Point>, color: Int): List<MapObject> {
     if (points.size < 2) return emptyList()
 
-    val tip  = points.last()
+    val tip = points.last()
     val tail = points[maxOf(0, points.size - 6)]
 
     val cosLat = Math.cos(Math.toRadians(tip.latitude))
@@ -604,7 +704,8 @@ private fun addArrowhead(yandexMap: Map, points: List<Point>, color: Int): List<
     val len = Math.sqrt(dx * dx + dy * dy)
     if (len < 1e-10) return emptyList()
 
-    val ux = dx / len; val uy = dy / len
+    val ux = dx / len;
+    val uy = dy / len
     val arrowLen = 15.0 / 111_320.0
 
     fun wing(angleDeg: Double): Point {
@@ -630,9 +731,14 @@ data class WorkAreaBounds(
     val minLongitude: Double,
     val maxLongitude: Double
 ) {
-    val centerPoint: Point get() = Point((minLatitude + maxLatitude) / 2.0, (minLongitude + maxLongitude) / 2.0)
+    val centerPoint: Point
+        get() = Point(
+            (minLatitude + maxLatitude) / 2.0,
+            (minLongitude + maxLongitude) / 2.0
+        )
 
-    fun contains(point: Point) = point.latitude in minLatitude..maxLatitude && point.longitude in minLongitude..maxLongitude
+    fun contains(point: Point) =
+        point.latitude in minLatitude..maxLatitude && point.longitude in minLongitude..maxLongitude
 
     fun toRectanglePoints() = listOf(
         Point(maxLatitude, minLongitude), Point(maxLatitude, maxLongitude),
@@ -666,7 +772,13 @@ private fun AlgorithmOptionButton(text: String, selected: Boolean, onClick: () -
 @Composable
 private fun ModeButton(text: String, selected: Boolean, onClick: () -> Unit) {
     if (selected) {
-        Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) { Text(text) }
+        Button(
+            onClick = onClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        ) { Text(text) }
     } else {
         OutlinedButton(onClick = onClick) { Text(text) }
     }
@@ -705,11 +817,12 @@ private fun createCircleMarkerBitmap(text: String, fillColor: Int, size: Int = 6
     return bitmap
 }
 
-private val RouteAlgorithm.title: String get() = when (this) {
-    RouteAlgorithm.ASTAR -> "A*"
-    RouteAlgorithm.ANT -> "Муравьи"
-    RouteAlgorithm.GENETIC -> "Генетика (еда)"
-    RouteAlgorithm.ANOTHER -> "Нейронка"
-    RouteAlgorithm.DECISION_TREE -> "Дерево решений"
-    RouteAlgorithm.CLUSTERING -> "Кластеризация"
-}
+private val RouteAlgorithm.title: String
+    get() = when (this) {
+        RouteAlgorithm.ASTAR -> "A*"
+        RouteAlgorithm.ANT -> "Муравьи"
+        RouteAlgorithm.GENETIC -> "Генетика (еда)"
+        RouteAlgorithm.ANOTHER -> "Нейронка"
+        RouteAlgorithm.DECISION_TREE -> "Дерево решений"
+        RouteAlgorithm.CLUSTERING -> "Кластеризация"
+    }
