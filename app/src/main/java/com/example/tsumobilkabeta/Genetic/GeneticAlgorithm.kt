@@ -11,7 +11,7 @@ data class Route(
     val pathSegments: List<List<GridNode>>
 )
 
-class GeneticAlgorithm (
+class GeneticAlgorithm(
     private val data: PrecomputedData,
     private val requiredItems: Set<String>,
     val totalGenerations: Int = 250,
@@ -98,7 +98,8 @@ class GeneticAlgorithm (
         val segments = mutableListOf<List<GridNode>>()
 
         for (i in 0 until nodeSeq.size - 1) {
-            val from = nodeSeq[i]; val to = nodeSeq[i + 1]
+            val from = nodeSeq[i];
+            val to = nodeSeq[i + 1]
             val d = data.distMatrix[from][to]
             val unreachable = d >= Double.MAX_VALUE / 2
             totalDist += if (unreachable) 500_000.0 else d
@@ -108,12 +109,12 @@ class GeneticAlgorithm (
             segments.add(path ?: listOf(data.cells[from], data.cells[to]))
 
             val travelMin = if (unreachable) 60
-                            else ((d / 1000.0 / walkingSpeedKmH) * 60.0).toInt()
+            else ((d / 1000.0 / walkingSpeedKmH) * 60.0).toInt()
             currentTimeMin += travelMin
 
             val est = data.establishments[visitedIdx[i]]
             val arrHour = (currentTimeMin / 60) % 24
-            val arrMin  = currentTimeMin % 60
+            val arrMin = currentTimeMin % 60
 
             if (!est.isOpenAt(arrHour, arrMin)) {
                 fitness += 200_000.0
@@ -128,7 +129,13 @@ class GeneticAlgorithm (
         val totalTimeMin = (totalDist / 1000.0 / walkingSpeedKmH) * 60.0 + visitedIdx.size * 3.0
         fitness += totalDist
 
-        return Route(visitedIdx.map { data.establishments[it] }, fitness, totalDist, totalTimeMin, segments)
+        return Route(
+            visitedIdx.map { data.establishments[it] },
+            fitness,
+            totalDist,
+            totalTimeMin,
+            segments
+        )
     }
 
     private fun tournament(evaluated: List<Pair<IntArray, Route>>, k: Int = 7): IntArray {
@@ -138,14 +145,18 @@ class GeneticAlgorithm (
     }
 
     private fun ox1Crossover(p1: IntArray, p2: IntArray): IntArray {
-        val a = Random.nextInt(n); val b = Random.nextInt(n)
-        val lo = minOf(a, b); val hi = maxOf(a, b)
+        val a = Random.nextInt(n);
+        val b = Random.nextInt(n)
+        val lo = minOf(a, b);
+        val hi = maxOf(a, b)
         val child = IntArray(n) { -1 }
         for (i in lo..hi) child[i] = p1[i]
         val inChild = child.toHashSet()
         var pos = (hi + 1) % n
         for (v in p2) {
-            if (v !in inChild) { child[pos] = v; inChild.add(v); pos = (pos + 1) % n }
+            if (v !in inChild) {
+                child[pos] = v; inChild.add(v); pos = (pos + 1) % n
+            }
         }
         return child
     }
@@ -154,18 +165,27 @@ class GeneticAlgorithm (
         val c = chromosome.copyOf()
         return when (Random.nextInt(3)) {
             0 -> {
-                val i = Random.nextInt(n); var j = Random.nextInt(n)
+                val i = Random.nextInt(n);
+                var j = Random.nextInt(n)
                 while (j == i) j = Random.nextInt(n)
                 c[i] = c[j].also { c[j] = c[i] }; c
             }
+
             1 -> {
-                val a = Random.nextInt(n); val b = Random.nextInt(n)
-                val lo = minOf(a, b); val hi = maxOf(a, b)
-                var l = lo; var r = hi
-                while (l < r) { c[l] = c[r].also { c[r] = c[l] }; l++; r-- }; c
+                val a = Random.nextInt(n);
+                val b = Random.nextInt(n)
+                val lo = minOf(a, b);
+                val hi = maxOf(a, b)
+                var l = lo;
+                var r = hi
+                while (l < r) {
+                    c[l] = c[r].also { c[r] = c[l] }; l++; r--
+                }; c
             }
+
             else -> {
-                val i = Random.nextInt(n); val gene = c[i]
+                val i = Random.nextInt(n);
+                val gene = c[i]
                 val arr = c.toMutableList(); arr.removeAt(i)
                 arr.add(Random.nextInt(arr.size + 1), gene); arr.toIntArray()
             }

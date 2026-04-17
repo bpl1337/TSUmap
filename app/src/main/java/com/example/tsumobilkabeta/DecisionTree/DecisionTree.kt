@@ -5,76 +5,63 @@ import kotlin.math.ln
 sealed class TreeNode {
     data class Leaf(val label: String, val count: Int) : TreeNode()
     data class Split(
-        val attribute: String,
-        val children: Map<String, TreeNode>,
-        val majorityLabel: String
+        val attribute: String, val children: Map<String, TreeNode>, val majorityLabel: String
     ) : TreeNode()
 }
 
 data class Dataset(
-    val attributes: List<String>,
-    val target: String,
-    val rows: List<Map<String, String>>
+    val attributes: List<String>, val target: String, val rows: List<Map<String, String>>
 )
 
-object DecisionTreeBuilder {
-    fun build(data: Dataset): TreeNode =
-        buildNode(data.rows, data.attributes, data.target)
+data class ClassificationResult(val label: String, val path: List<Pair<String, String>>)
 
-    private fun buildNode(
-        rows: List<Map<String, String>>,
-        attrs: List<String>,
-        target: String
-    ): TreeNode {
-        if (rows.isEmpty()) return TreeNode.Leaf("?", 0)
-        val counts = rows.groupingBy { it[target]!! }.eachCount()
-        val majority = counts.maxByOrNull { it.value }!!.key
-        if (counts.size == 1 || attrs.isEmpty()) return TreeNode.Leaf(majority, rows.size)
-        val best = attrs.maxByOrNull { infoGain(rows, it, target) }!!
-        val children = rows.groupBy { it[best]!! }
-            .mapValues { (_, subset) -> buildNode(subset, attrs - best, target) }
-        return TreeNode.Split(best, children, majority)
-    }
+fun buildTree(data: Dataset): TreeNode = buildNode(data.rows, data.attributes, data.target)
 
-    private fun entropy(rows: List<Map<String, String>>, target: String): Double {
-        if (rows.isEmpty()) return 0.0
-        val total = rows.size.toDouble()
-        return -rows.groupingBy { it[target]!! }.eachCount().values.sumOf { c ->
-            val p = c / total
-            if (p > 0) p * ln(p) / ln(2.0) else 0.0
-        }
-    }
+private fun buildNode(
+    rows: List<Map<String, String>>, attrs: List<String>, target: String
+): TreeNode {
+    if (rows.isEmpty()) return TreeNode.Leaf("?", 0)
+    val counts = rows.groupingBy { it[target]!! }.eachCount()
+    val majority = counts.maxByOrNull { it.value }!!.key
+    if (counts.size == 1 || attrs.isEmpty()) return TreeNode.Leaf(majority, rows.size)
+    val best = attrs.maxByOrNull { infoGain(rows, it, target) }!!
+    val children =
+        rows.groupBy { it[best]!! }.mapValues { (_, s) -> buildNode(s, attrs - best, target) }
+    return TreeNode.Split(best, children, majority)
+}
 
-    private fun infoGain(rows: List<Map<String, String>>, attr: String, target: String): Double {
-        val total = rows.size.toDouble()
-        return entropy(rows, target) - rows.groupBy { it[attr]!! }.values.sumOf { subset ->
-            (subset.size / total) * entropy(subset, target)
-        }
+private fun entropy(rows: List<Map<String, String>>, target: String): Double {
+    if (rows.isEmpty()) return 0.0
+    val total = rows.size.toDouble()
+    return -rows.groupingBy { it[target]!! }.eachCount().values.sumOf { c ->
+        val p = c / total; if (p > 0) p * ln(p) / ln(2.0) else 0.0
     }
 }
 
-object TreePruner {
-    fun prune(node: TreeNode, data: List<Map<String, String>>, target: String): TreeNode {
-        if (node is TreeNode.Leaf) return node
-        node as TreeNode.Split
-        val partitions = data.groupBy { it[node.attribute] ?: "" }
-        val pruned = TreeNode.Split(
-            attribute = node.attribute,
-            children = node.children.mapValues { (v, child) ->
-                prune(child, partitions[v] ?: emptyList(), target)
-            },
-            majorityLabel = node.majorityLabel
-        )
-        val subtreeCorrect = data.count { classify(pruned, it) == it[target] }
-        val leafCorrect    = data.count { it[target] == node.majorityLabel }
-        return if (leafCorrect >= subtreeCorrect) TreeNode.Leaf(node.majorityLabel, data.size) else pruned
-    }
+private fun infoGain(rows: List<Map<String, String>>, attr: String, target: String): Double {
+    val total = rows.size.toDouble()
+    return entropy(
+        rows, target
+    ) - rows.groupBy { it[attr]!! }.values.sumOf { s -> (s.size / total) * entropy(s, target) }
 }
 
-data class ClassificationResult(
-    val label: String,
-    val path: List<Pair<String, String>>
-)
+fun prune(node: TreeNode, data: List<Map<String, String>>, target: String): TreeNode {
+    if (node is TreeNode.Leaf) return node
+    node as TreeNode.Split
+    val parts = data.groupBy { it[node.attribute] ?: "" }
+    val pruned = TreeNode.Split(
+        attribute = node.attribute, children = node.children.mapValues { (v, child) ->
+            prune(
+                child, parts[v] ?: emptyList(), target
+            )
+        }, majorityLabel = node.majorityLabel
+    )
+    return if (data.count { it[target] == node.majorityLabel } >= data.count {
+            classify(
+                pruned, it
+            ) == it[target]
+        }) TreeNode.Leaf(node.majorityLabel, data.size) else pruned
+}
 
 fun classify(node: TreeNode, record: Map<String, String>): String {
     var cur = node
@@ -90,17 +77,17 @@ fun classifyWithPath(node: TreeNode, record: Map<String, String>): Classificatio
         path += cur.attribute to v
         cur = cur.children[v] ?: break
     }
-    val label = if (cur is TreeNode.Leaf) cur.label
-                else (cur as TreeNode.Split).majorityLabel
-    return ClassificationResult(label, path)
+    return ClassificationResult(
+        if (cur is TreeNode.Leaf) cur.label else (cur as TreeNode.Split).majorityLabel, path
+    )
 }
 
 fun treeDepth(node: TreeNode): Int = when (node) {
-    is TreeNode.Leaf  -> 1
+    is TreeNode.Leaf -> 1
     is TreeNode.Split -> 1 + (node.children.values.maxOfOrNull { treeDepth(it) } ?: 0)
 }
 
 fun nodeCount(node: TreeNode): Int = when (node) {
-    is TreeNode.Leaf  -> 1
+    is TreeNode.Leaf -> 1
     is TreeNode.Split -> 1 + node.children.values.sumOf { nodeCount(it) }
 }

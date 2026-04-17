@@ -31,9 +31,18 @@ class WalkabilityGrid(
 ) {
     private val dynamicBarriers = mutableSetOf<GridNode>()
 
-    fun addBarrier(node: GridNode) { dynamicBarriers.add(node) }
-    fun removeBarrier(node: GridNode) { dynamicBarriers.remove(node) }
-    fun clearBarriers() { dynamicBarriers.clear() }
+    fun addBarrier(node: GridNode) {
+        dynamicBarriers.add(node)
+    }
+
+    fun removeBarrier(node: GridNode) {
+        dynamicBarriers.remove(node)
+    }
+
+    fun clearBarriers() {
+        dynamicBarriers.clear()
+    }
+
     fun isBarrier(node: GridNode): Boolean = node in dynamicBarriers
     fun barrierSnapshot(): Set<GridNode> = dynamicBarriers.toSet()
 
