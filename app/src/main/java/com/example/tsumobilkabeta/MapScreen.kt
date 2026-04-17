@@ -49,8 +49,7 @@ import com.example.tsumobilkabeta.AI.AIMainActivity
 import com.example.tsumobilkabeta.AStar.AStarOverlayView
 import com.example.tsumobilkabeta.Ant.AntRoutePanel
 import com.example.tsumobilkabeta.Ant.AntViewModel
-import com.example.tsumobilkabeta.Clustering.ClusteringPanel
-import com.example.tsumobilkabeta.Clustering.ClusteringViewModel
+import com.example.tsumobilkabeta.Clustering.UI.ClusteringViewModel
 import com.example.tsumobilkabeta.DecisionTree.DecisionTreeActivity
 import com.example.tsumobilkabeta.Genetic.FoodRoutePanel
 import com.example.tsumobilkabeta.Genetic.GeneticFoodViewModel
@@ -71,6 +70,8 @@ import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.map.MapObject
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
+import com.example.tsumobilkabeta.Clustering.UI.ClusteringPanel
+import com.example.tsumobilkabeta.Clustering.model.ClusteringMode
 
 
 @Composable
@@ -329,9 +330,11 @@ fun MapScreen(
         onDispose { added.forEach { runCatching { yandexMap.mapObjects.remove(it) } } }
     }
 
-    val clusters = clusteringViewModel.clusters
+    val clusters = clusteringViewModel.displayedClusters
+    val changedIds = clusteringViewModel.changedEstablishmentIds
+    val clusteringMode = clusteringViewModel.mode
 
-    DisposableEffect(yandexMap, clusters, selectedAlgorithm) {
+    DisposableEffect(yandexMap, clusters, changedIds, clusteringMode, selectedAlgorithm) {
         val added = mutableListOf<MapObject>()
 
         if (selectedAlgorithm == RouteAlgorithm.CLUSTERING && clusters.isNotEmpty()) {
@@ -353,17 +356,26 @@ fun MapScreen(
                         establishment.coordinate.x
                     )
 
+                    val label = if (
+                        clusteringMode == ClusteringMode.COMPARISON &&
+                        changedIds.contains(establishment.id)
+                    ) {
+                        "!"
+                    } else {
+                        "${index + 1}"
+                    }
+
                     val placemark = yandexMap.mapObjects.addPlacemark(point).apply {
                         setIcon(
                             ImageProvider.fromBitmap(
-                                createCircleMarkerBitmap("${index + 1}", color)
+                                createCircleMarkerBitmap(label, color)
                             ),
                             IconStyle().apply {
                                 anchor = PointF(0.5f, 0.5f)
-                                scale = 0.8f
+                                scale = if (label == "!") 1.0f else 0.8f
                             }
                         )
-                        zIndex = 12f
+                        zIndex = if (label == "!") 14f else 12f
                     }
 
                     added.add(placemark)
@@ -646,7 +658,7 @@ private fun AlgorithmLayer(
                     Card(modifier = Modifier.widthIn(max = 280.dp)) {
                         Box(modifier = Modifier
                             .padding(12.dp)
-                            .heightIn(max = 320.dp)) {
+                            .heightIn(max = 520.dp)) {
                             ClusteringPanel(viewModel = clusteringViewModel)
                         }
                     }

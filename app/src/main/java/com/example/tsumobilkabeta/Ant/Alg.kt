@@ -3,10 +3,11 @@ package com.example.tsumobilkabeta.Ant
 import android.content.Context
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import kotlin.math.abs
 import kotlin.math.pow
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
+import java.io.File
 
 data class Result(
     val allPlaces: List<Places>,
@@ -26,11 +27,6 @@ data class Places(
 data class GridPoint(
     val col: Int,
     val row: Int
-)
-
-data class GridCell(
-    val point: GridPoint,
-    val passable: Boolean
 )
 
 data class Tour(
@@ -54,9 +50,9 @@ class GridMap(
     val minY: Double,
     val stepX: Double,
     val stepY: Double,
-    public val passable: Map<GridPoint, Boolean>
+    val passable: Map<GridPoint, Boolean>
 ) {
-    public val directions = listOf(
+    val directions = listOf(
         GridPoint(1, 0),
         GridPoint(0, -1),
         GridPoint(0, 1),
@@ -198,7 +194,7 @@ object Reader {
         )
     }
 
-    public fun findStep(values: List<Double>): Double {
+    fun findStep(values: List<Double>): Double {
         val diffs = values.zipWithNext()
             .map { (a, b) -> b - a }
             .filter { it > 1e-9 }
@@ -207,7 +203,7 @@ object Reader {
     }
 }
 
-class RouteBuilder(public val gridMap: GridMap) {
+class RouteBuilder(val gridMap: GridMap) {
 
     fun buildRoute(
         userPoint: GridPoint,
