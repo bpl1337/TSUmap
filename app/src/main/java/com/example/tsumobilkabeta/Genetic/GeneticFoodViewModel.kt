@@ -1,7 +1,6 @@
 package com.example.tsumobilkabeta.Genetic
 
 import android.content.Context
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -131,7 +130,7 @@ class GeneticFoodViewModel : ViewModel() {
             withContext(Dispatchers.Main) { _phase.value = GeneticPhase.RUNNING_GA }
 
             val cal = Calendar.getInstance()
-            val nowHour   = cal.get(Calendar.HOUR_OF_DAY)
+            val nowHour = cal.get(Calendar.HOUR_OF_DAY)
             val nowMinute = cal.get(Calendar.MINUTE)
 
             val ga = GeneticAlgorithm(
@@ -157,7 +156,8 @@ class GeneticFoodViewModel : ViewModel() {
 
             withContext(Dispatchers.Main) {
                 _bestRoute.value = result
-                _drawableRoute.value = if (result != null) routeToDrawable(result, g, isFinal = true) else null
+                _drawableRoute.value =
+                    if (result != null) routeToDrawable(result, g, isFinal = true) else null
                 _phase.value = GeneticPhase.RESULT
             }
         }
@@ -173,7 +173,11 @@ class GeneticFoodViewModel : ViewModel() {
         _phase.value = GeneticPhase.SELECT
     }
 
-    private fun routeToDrawable(route: Route, grid: WalkabilityGrid, isFinal: Boolean): DrawableRoute {
+    private fun routeToDrawable(
+        route: Route,
+        grid: WalkabilityGrid,
+        isFinal: Boolean
+    ): DrawableRoute {
         val segments = route.pathSegments.map { seg ->
             seg.map { node -> GridProjection.nodeToPoint(node, grid) }
         }

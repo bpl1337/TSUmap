@@ -1,10 +1,5 @@
 package com.example.tsumobilkabeta
 
-import com.example.tsumobilkabeta.AStar.AStarPathfinder
-import com.example.tsumobilkabeta.AStar.GridNode
-import com.example.tsumobilkabeta.AStar.GridProjection
-import com.example.tsumobilkabeta.AStar.WalkabilityCsvLoader
-import com.example.tsumobilkabeta.AStar.WalkabilityGrid
 import android.content.Context
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -12,6 +7,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.tsumobilkabeta.AStar.AStarPathfinder
+import com.example.tsumobilkabeta.AStar.GridNode
+import com.example.tsumobilkabeta.AStar.GridProjection
+import com.example.tsumobilkabeta.AStar.WalkabilityCsvLoader
+import com.example.tsumobilkabeta.AStar.WalkabilityGrid
 import com.yandex.mapkit.geometry.Point
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -54,9 +54,17 @@ class NavigationViewModel : ViewModel() {
         gridLoaded = true
     }
 
-    fun setStartPoint(point: Point) { startPoint.value = point }
-    fun setEndPoint(point: Point) { endPoint.value = point }
-    fun setSelectionMode(mode: PointSelectionMode) { selectionMode.value = mode }
+    fun setStartPoint(point: Point) {
+        startPoint.value = point
+    }
+
+    fun setEndPoint(point: Point) {
+        endPoint.value = point
+    }
+
+    fun setSelectionMode(mode: PointSelectionMode) {
+        selectionMode.value = mode
+    }
 
     fun selectAlgorithm(algorithm: RouteAlgorithm) {
         selectedAlgorithm.value = algorithm
@@ -78,7 +86,9 @@ class NavigationViewModel : ViewModel() {
         pathStatus = PathStatus.NONE
     }
 
-    fun dismissNoPathDialog() { showNoPathDialog = false }
+    fun dismissNoPathDialog() {
+        showNoPathDialog = false
+    }
 
     fun resetPoints() {
         startPoint.value = null
@@ -129,7 +139,7 @@ class NavigationViewModel : ViewModel() {
             RouteAlgorithm.ANOTHER -> Unit
             RouteAlgorithm.DECISION_TREE -> Unit
             RouteAlgorithm.GENETIC -> Unit
-            RouteAlgorithm.CLUSTERING-> Unit
+            RouteAlgorithm.CLUSTERING -> Unit
 
         }
     }
@@ -187,6 +197,6 @@ class NavigationViewModel : ViewModel() {
 
 enum class PointSelectionMode { START, END, BARRIER }
 
-enum class RouteAlgorithm { ASTAR, ANT, ANOTHER, DECISION_TREE, GENETIC, CLUSTERING}
+enum class RouteAlgorithm { ASTAR, ANT, ANOTHER, DECISION_TREE, GENETIC, CLUSTERING }
 
 enum class PathStatus { NONE, SEARCHING, FOUND, NOT_FOUND }

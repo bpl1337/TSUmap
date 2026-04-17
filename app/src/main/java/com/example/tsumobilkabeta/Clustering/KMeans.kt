@@ -8,7 +8,7 @@ data class Cluster(
     val items: List<Establishments>
 )
 
-object KMeans{
+object KMeans {
     fun clusterize(
         establishments: List<Establishments>,
         k: Int
@@ -58,14 +58,14 @@ object KMeans{
 }
 
 
-fun dist(a: Point,b:Point): Double{
-    val dx =a.x-b.x
-    val dy = a.y-b.y
-    return sqrt(dx*dx+dy*dy)
+fun dist(a: Point, b: Point): Double {
+    val dx = a.x - b.x
+    val dy = a.y - b.y
+    return sqrt(dx * dx + dy * dy)
 }
 
-fun findCenter(items: List<Establishments>): Point{
-    val x = items.map{it.coordinate.x}.average()
-    val y = items.map{it.coordinate.y}.average()
-    return Point(x,y)
+fun findCenter(items: List<Establishments>): Point {
+    val x = items.map { it.coordinate.x }.average()
+    val y = items.map { it.coordinate.y }.average()
+    return Point(x, y)
 }

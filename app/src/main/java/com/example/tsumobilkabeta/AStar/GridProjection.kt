@@ -33,13 +33,15 @@ object GridProjection {
         val gridX = if (hasCentroids) {
             findNearestIndex(x, grid.uniqueX)
         } else {
-            ((x - grid.minX) / grid.step).roundToInt().coerceIn(0, (grid.width - 1).coerceAtLeast(0))
+            ((x - grid.minX) / grid.step).roundToInt()
+                .coerceIn(0, (grid.width - 1).coerceAtLeast(0))
         }
 
         val gridY = if (hasCentroids) {
             findNearestIndex(y, grid.uniqueY)
         } else {
-            ((y - grid.minY) / grid.step).roundToInt().coerceIn(0, (grid.height - 1).coerceAtLeast(0))
+            ((y - grid.minY) / grid.step).roundToInt()
+                .coerceIn(0, (grid.height - 1).coerceAtLeast(0))
         }
 
         return GridNode(gridX, gridY)

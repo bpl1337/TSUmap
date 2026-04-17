@@ -16,7 +16,13 @@ object WalkabilityCsvLoader {
         }
 
         if (rows.isEmpty()) {
-            return WalkabilityGrid(width = 0, height = 0, minX = 0.0, minY = 0.0, walkable = arrayOf())
+            return WalkabilityGrid(
+                width = 0,
+                height = 0,
+                minX = 0.0,
+                minY = 0.0,
+                walkable = arrayOf()
+            )
         }
 
         val uniqueX = rows.map { it.first }.distinct().sorted()

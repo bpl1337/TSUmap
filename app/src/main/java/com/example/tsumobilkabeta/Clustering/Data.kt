@@ -1,4 +1,5 @@
 package com.example.tsumobilkabeta.Clustering
+
 import com.example.tsumobilkabeta.Genetic.FoodDatabase
 
 data class Point(
@@ -12,15 +13,15 @@ data class Establishments(
     val name: String
 )
 
-object DataProvider{
-    fun getEstablishments(): List<Establishments>{
-        return FoodDatabase.allEstablishments.map{food ->
+object DataProvider {
+    fun getEstablishments(): List<Establishments> {
+        return FoodDatabase.allEstablishments.map { food ->
             Establishments(
-                id=food.id,
-                name=food.name,
+                id = food.id,
+                name = food.name,
                 coordinate = Point(
-                    x=food.location.longitude,
-                    y=food.location.latitude
+                    x = food.location.longitude,
+                    y = food.location.latitude
                 )
             )
         }

@@ -19,29 +19,25 @@ fun ClusteringPanel(viewModel: ClusteringViewModel?) {
         Text("Количество кластеров: ${viewModel.clusterCount}")
 
         Button(
-            onClick = { viewModel.increaseClusterCount() },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { viewModel.increaseClusterCount() }, modifier = Modifier.fillMaxWidth()
         ) {
             Text("K +")
         }
 
         Button(
-            onClick = { viewModel.decreaseClusterCount() },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { viewModel.decreaseClusterCount() }, modifier = Modifier.fillMaxWidth()
         ) {
             Text("K -")
         }
 
         Button(
-            onClick = { viewModel.runClustering() },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { viewModel.runClustering() }, modifier = Modifier.fillMaxWidth()
         ) {
             Text("Запустить")
         }
 
         OutlinedButton(
-            onClick = { viewModel.resetClustering() },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { viewModel.resetClustering() }, modifier = Modifier.fillMaxWidth()
         ) {
             Text("Сброс")
         }

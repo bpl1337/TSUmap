@@ -1,12 +1,6 @@
 package com.example.tsumobilkabeta.AI
 
 import android.os.Bundle
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import com.example.tsumobilkabeta.processDrawing2px
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
@@ -30,9 +24,16 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import com.example.tsumobilkabeta.floatArrayToBitmap
+import com.example.tsumobilkabeta.processDrawing2px
 import com.example.tsumobilkabeta.ui.theme.TSUMapTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+
 private const val ADMIN_MODE = false
 
 class AIMainActivity : ComponentActivity() {
@@ -99,29 +100,34 @@ fun RatingApp(classifier: NnClassifier) {
 
         Spacer(Modifier.height(20.dp))
 
-        Box(Modifier.size(canvasSizeDp).clipToBounds().background(Color(0xFFF5F5F5))) {
+        Box(Modifier
+            .size(canvasSizeDp)
+            .clipToBounds()
+            .background(Color(0xFFF5F5F5))) {
             Canvas(
-                Modifier.fillMaxSize().pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        if (down.position.x in 0f..canvasSizePx && down.position.y in 0f..canvasSizePx) {
-                            currentPath.moveTo(down.position.x, down.position.y)
-                            do {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.first()
-                                if (change.pressed) {
-                                    val pos = change.position
-                                    if (pos.x in 0f..canvasSizePx && pos.y in 0f..canvasSizePx) {
-                                        currentPath.lineTo(pos.x, pos.y)
-                                        change.consume()
-                                        val nextPath = Path().apply { addPath(currentPath) }
-                                        currentPath = nextPath
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown()
+                            if (down.position.x in 0f..canvasSizePx && down.position.y in 0f..canvasSizePx) {
+                                currentPath.moveTo(down.position.x, down.position.y)
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.first()
+                                    if (change.pressed) {
+                                        val pos = change.position
+                                        if (pos.x in 0f..canvasSizePx && pos.y in 0f..canvasSizePx) {
+                                            currentPath.lineTo(pos.x, pos.y)
+                                            change.consume()
+                                            val nextPath = Path().apply { addPath(currentPath) }
+                                            currentPath = nextPath
+                                        }
                                     }
-                                }
-                            } while (event.changes.any { it.pressed })
+                                } while (event.changes.any { it.pressed })
+                            }
                         }
                     }
-                }
             ) {
                 drawPath(
                     path = currentPath,
@@ -188,7 +194,12 @@ fun RatingApp(classifier: NnClassifier) {
             Spacer(Modifier.height(8.dp))
 
             val totalSaved = countsPerDigit.sum()
-            Text("Панель датасета", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+            Text(
+                "Панель датасета",
+                fontSize = 13.sp,
+                color = Color.Gray,
+                fontWeight = FontWeight.Bold
+            )
             Text("Всего: $totalSaved образцов", fontSize = 11.sp, color = Color.Gray)
 
             if (adminStatus.isNotEmpty()) {
@@ -208,7 +219,8 @@ fun RatingApp(classifier: NnClassifier) {
                                         if (!currentPath.isEmpty) {
                                             val pixels = processDrawing2px(currentPath)
                                             saveSample(context, digit, pixels)
-                                            countsPerDigit = countsPerDigit.copyOf().also { it[digit]++ }
+                                            countsPerDigit =
+                                                countsPerDigit.copyOf().also { it[digit]++ }
                                             currentPath = Path()
                                             adminStatus = "Сохранено: цифра $digit"
                                         } else {

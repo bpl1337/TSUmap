@@ -15,6 +15,7 @@ class NnClassifier(private val context: Context) {
     private var w3: FloatArray? = null
     private var b3: FloatArray? = null
     private var initialized = false
+
     companion object {
         private const val WEIGHT_FILE = "nn_weights.bin"
     }
@@ -30,11 +31,26 @@ class NnClassifier(private val context: Context) {
             val h2 = readInt(bytes, pos); pos += 4
             if (nLayers != 3 || h1 != HIDDEN1 || h2 != HIDDEN2) return false
 
-            w1 = FloatArray(INPUT_SIZE * HIDDEN1) { readFloat(bytes, pos + it * 4) }; pos += INPUT_SIZE * HIDDEN1 * 4
+            w1 = FloatArray(INPUT_SIZE * HIDDEN1) {
+                readFloat(
+                    bytes,
+                    pos + it * 4
+                )
+            }; pos += INPUT_SIZE * HIDDEN1 * 4
             b1 = FloatArray(HIDDEN1) { readFloat(bytes, pos + it * 4) }; pos += HIDDEN1 * 4
-            w2 = FloatArray(HIDDEN1 * HIDDEN2) { readFloat(bytes, pos + it * 4) }; pos += HIDDEN1 * HIDDEN2 * 4
+            w2 = FloatArray(HIDDEN1 * HIDDEN2) {
+                readFloat(
+                    bytes,
+                    pos + it * 4
+                )
+            }; pos += HIDDEN1 * HIDDEN2 * 4
             b2 = FloatArray(HIDDEN2) { readFloat(bytes, pos + it * 4) }; pos += HIDDEN2 * 4
-            w3 = FloatArray(HIDDEN2 * OUTPUT_SIZE){ readFloat(bytes, pos + it * 4) }; pos += HIDDEN2 * OUTPUT_SIZE * 4
+            w3 = FloatArray(HIDDEN2 * OUTPUT_SIZE) {
+                readFloat(
+                    bytes,
+                    pos + it * 4
+                )
+            }; pos += HIDDEN2 * OUTPUT_SIZE * 4
             b3 = FloatArray(OUTPUT_SIZE) { readFloat(bytes, pos + it * 4) }
 
             initialized = true
@@ -59,11 +75,13 @@ class NnClassifier(private val context: Context) {
         val digit = argmax(probs)
         return Pair(digit, probs[digit])
     }
+
     private fun readInt(bytes: ByteArray, offset: Int): Int =
         (bytes[offset].toInt() and 0xFF) or
-        ((bytes[offset + 1].toInt() and 0xFF) shl 8) or
-        ((bytes[offset + 2].toInt() and 0xFF) shl 16) or
-        ((bytes[offset + 3].toInt() and 0xFF) shl 24)
+                ((bytes[offset + 1].toInt() and 0xFF) shl 8) or
+                ((bytes[offset + 2].toInt() and 0xFF) shl 16) or
+                ((bytes[offset + 3].toInt() and 0xFF) shl 24)
+
     private fun readFloat(bytes: ByteArray, offset: Int): Float =
         Float.fromBits(readInt(bytes, offset))
 
@@ -76,6 +94,7 @@ class NnClassifier(private val context: Context) {
         }
         return y
     }
+
     private fun relu(v: FloatArray): FloatArray =
         FloatArray(v.size) { if (v[it] > 0f) v[it] else 0f }
 

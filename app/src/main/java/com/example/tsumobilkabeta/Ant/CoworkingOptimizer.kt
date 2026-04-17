@@ -26,13 +26,13 @@ data class CoworkingResult(
 
 object CoworkingDatabase {
     val locations = listOf(
-        CoworkingLocation(1, "Научная библиотека ТГУ",       9456380.0, 7652400.0, 80, 4.5),
-        CoworkingLocation(2, "Коворкинг «Точка кипения»",    9456520.0, 7652320.0, 40, 5.0),
-        CoworkingLocation(3, "Читальный зал НБ",             9456300.0, 7652380.0, 50, 4.0),
-        CoworkingLocation(4, "Аудитория 228",                9456460.0, 7652250.0, 30, 3.0),
-        CoworkingLocation(5, "Студенческий коворкинг",       9456200.0, 7652150.0, 25, 4.2),
-        CoworkingLocation(6, "Компьютерный класс",           9456350.0, 7651950.0, 20, 3.5),
-        CoworkingLocation(7, "Кафе «Перемена»",              9456100.0, 7652050.0, 15, 3.8)
+        CoworkingLocation(1, "Научная библиотека ТГУ", 9456380.0, 7652400.0, 80, 4.5),
+        CoworkingLocation(2, "Коворкинг «Точка кипения»", 9456520.0, 7652320.0, 40, 5.0),
+        CoworkingLocation(3, "Читальный зал НБ", 9456300.0, 7652380.0, 50, 4.0),
+        CoworkingLocation(4, "Аудитория 228", 9456460.0, 7652250.0, 30, 3.0),
+        CoworkingLocation(5, "Студенческий коворкинг", 9456200.0, 7652150.0, 25, 4.2),
+        CoworkingLocation(6, "Компьютерный класс", 9456350.0, 7651950.0, 20, 3.5),
+        CoworkingLocation(7, "Кафе «Перемена»", 9456100.0, 7652050.0, 15, 3.8)
     )
 
     val totalCapacity: Int get() = locations.sumOf { it.capacity }
