@@ -103,8 +103,8 @@ private fun SelectionPanel(
                 .height(40.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (startNode != null) Color(0xFF16A34A) else Color(0xFFEA580C),
-                contentColor = Color.White
+                containerColor = if (startNode != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ),
             contentPadding = PaddingValues(horizontal = 8.dp)
         ) {
@@ -127,7 +127,7 @@ private fun SelectionPanel(
                         FoodDatabase.categoryDisplayName(category),
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp,
-                        color = Color(0xFF2563EB),
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
                     )
                 }
@@ -139,12 +139,12 @@ private fun SelectionPanel(
                             .fillMaxWidth()
                             .padding(vertical = 1.dp)
                             .background(
-                                if (selected) Color(0xFFEFF6FF) else Color.Transparent,
+                                if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f) else Color.Transparent,
                                 RoundedCornerShape(6.dp)
                             )
                             .border(
                                 1.dp,
-                                if (selected) Color(0xFF2563EB) else Color(0xFFE5E7EB),
+                                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                                 RoundedCornerShape(6.dp)
                             )
                             .clickable { onToggleItem(itemName) }
@@ -155,14 +155,14 @@ private fun SelectionPanel(
                             checked = selected,
                             onCheckedChange = { onToggleItem(itemName) },
                             modifier = Modifier.size(18.dp),
-                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF2563EB))
+                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                         )
                         Spacer(Modifier.width(6.dp))
                         Column {
                             Text(itemName, fontSize = 13.sp)
                             Text(
                                 sources.joinToString(", ") { it.name },
-                                fontSize = 9.sp, color = Color.Gray
+                                fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -174,7 +174,7 @@ private fun SelectionPanel(
 
         if (errorMsg != null) {
             Text(
-                errorMsg, color = Color.Red, fontSize = 11.sp,
+                errorMsg, color = MaterialTheme.colorScheme.error, fontSize = 11.sp,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
         }
@@ -187,7 +187,8 @@ private fun SelectionPanel(
             shape = RoundedCornerShape(8.dp),
             enabled = selectedItems.isNotEmpty() && startNode != null,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF2563EB), contentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
             Text("Построить маршрут (${selectedItems.size})", fontSize = 13.sp)
@@ -206,21 +207,21 @@ private fun ProgressPanel(
     Column(modifier = Modifier
         .fillMaxWidth()
         .padding(4.dp)) {
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF2563EB))
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(6.dp))
         LinearProgressIndicator(
             progress = { progress.coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp),
-            color = Color(0xFF2563EB),
-            trackColor = Color(0xFFE5E7EB)
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
         Spacer(Modifier.height(4.dp))
-        Text(detail, fontSize = 11.sp, color = Color.Gray)
+        Text(detail, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (extra != null) {
             Text(
-                extra, fontSize = 12.sp, color = Color(0xFF2563EB),
+                extra, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
@@ -248,11 +249,11 @@ private fun ResultPanel(
             .verticalScroll(rememberScrollState())
     ) {
         if (route == null) {
-            Text("Маршрут не найден", color = Color.Red, fontWeight = FontWeight.Bold)
+            Text("Маршрут не найден", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
         } else {
             Text(
                 "Маршрут построен!", fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                color = Color(0xFF16A34A)
+                color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(6.dp))
 
@@ -260,7 +261,7 @@ private fun ResultPanel(
                 "${"%.0f".format(route.totalDistMeters)} м · " +
                         "${"%.0f".format(route.totalTimeMin)} мин · " +
                         "${route.establishments.size} заведений",
-                fontSize = 12.sp, color = Color(0xFF374151)
+                fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(Modifier.height(8.dp))
@@ -273,19 +274,19 @@ private fun ResultPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 2.dp)
-                        .background(Color(0xFFF9FAFB), RoundedCornerShape(6.dp))
-                        .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.Top
                 ) {
                     Box(
                         modifier = Modifier
                             .size(22.dp)
-                            .background(Color(0xFF2563EB), RoundedCornerShape(11.dp)),
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "${idx + 1}", color = Color.White, fontSize = 11.sp,
+                            "${idx + 1}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -293,11 +294,11 @@ private fun ResultPanel(
                     Column {
                         Text(est.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                         if (items.isNotEmpty())
-                            Text(items, fontSize = 11.sp, color = Color(0xFF374151))
+                            Text(items, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                         Text(
                             "${est.openHour}:${"%02d".format(est.openMinute)} — " +
                                     "${est.closeHour}:${"%02d".format(est.closeMinute)}",
-                            fontSize = 10.sp, color = Color(0xFF9CA3AF)
+                            fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -312,7 +313,8 @@ private fun ResultPanel(
                 .height(36.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF6B7280), contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
             )
         ) { Text("Заново", fontSize = 12.sp) }
     }
