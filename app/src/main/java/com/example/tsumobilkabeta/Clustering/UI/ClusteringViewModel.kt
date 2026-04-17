@@ -43,12 +43,6 @@ class ClusteringViewModel(application: Application) : AndroidViewModel(applicati
             ClusteringMode.COMPARISON -> euclideanClusters
         }
 
-    val changedEstablishmentIds: Set<Int>
-        get() = comparisonItems
-            .filter { it.changed }
-            .map { it.establishment.id }
-            .toSet()
-
     fun increaseClusterCount() {
         if (clusterCount < establishments.size) clusterCount++
     }

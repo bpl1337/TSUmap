@@ -134,8 +134,14 @@ fun MapScreen(
 
     val hasLocationPermission = remember(context) {
         {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
         }
     }
 
@@ -160,22 +166,28 @@ fun MapScreen(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { granted ->
         val allowed = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+                granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         if (allowed) {
             moveToCurrentLocation()
         } else {
-            Toast.makeText(context, "Разрешение на геолокацию не выдано", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Разрешите использование геолокации", Toast.LENGTH_SHORT).show()
         }
     }
 
-    val onLocateMeClick = remember(context, hasLocationPermission, locationPermissionLauncher, moveToCurrentLocation) {
+    val onLocateMeClick = remember(
+        context,
+        hasLocationPermission,
+        locationPermissionLauncher,
+        moveToCurrentLocation
+    ) {
         {
             if (hasLocationPermission()) {
                 moveToCurrentLocation()
             } else {
                 val activity = context as? Activity
                 if (activity == null) {
-                    Toast.makeText(context, "Не удалось запросить разрешение", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Не удалось запросить разрешение", Toast.LENGTH_SHORT)
+                        .show()
                 } else {
                     locationPermissionLauncher.launch(
                         arrayOf(
@@ -224,25 +236,6 @@ fun MapScreen(
                 if (!finished) return
                 if (isAutoCorrecting[0]) {
                     isAutoCorrecting[0] = false; return
-                }
-
-                val clampedLat = cameraPosition.target.latitude.coerceIn(
-                    workAreaBounds.minLatitude, workAreaBounds.maxLatitude
-                )
-                val clampedLon = cameraPosition.target.longitude.coerceIn(
-                    workAreaBounds.minLongitude, workAreaBounds.maxLongitude
-                )
-                if (clampedLat != cameraPosition.target.latitude || clampedLon != cameraPosition.target.longitude) {
-                    isAutoCorrecting[0] = true
-                    map.move(
-                        CameraPosition(
-                            Point(clampedLat, clampedLon),
-                            cameraPosition.zoom,
-                            cameraPosition.azimuth,
-                            cameraPosition.tilt
-                        ),
-                        Animation(Animation.Type.SMOOTH, 0.2f), null
-                    )
                 }
             }
         }
@@ -434,60 +427,60 @@ fun MapScreen(
         if (selectedAlgorithm == RouteAlgorithm.CLUSTERING) {
             val clusters = clusteringViewModel.displayedClusters
             if (clusters.isNotEmpty()) {
-            val colors = listOf(
-                0xFFE53935.toInt(),
-                0xFF1E88E5.toInt(),
-                0xFF43A047.toInt(),
-                0xFFFB8C00.toInt(),
-                0xFF8E24AA.toInt(),
-                0xFF00897B.toInt()
-            )
+                val colors = listOf(
+                    0xFFE53935.toInt(),
+                    0xFF1E88E5.toInt(),
+                    0xFF43A047.toInt(),
+                    0xFFFB8C00.toInt(),
+                    0xFF8E24AA.toInt(),
+                    0xFF00897B.toInt()
+                )
 
-            clusters.forEachIndexed { index, cluster ->
-                val color = colors[index % colors.size]
+                clusters.forEachIndexed { index, cluster ->
+                    val color = colors[index % colors.size]
 
-                cluster.items.forEach { establishment ->
-                    val point = Point(
-                        establishment.coordinate.y,
-                        establishment.coordinate.x
+                    cluster.items.forEach { establishment ->
+                        val point = Point(
+                            establishment.coordinate.y,
+                            establishment.coordinate.x
+                        )
+
+                        val placemark = yandexMap.mapObjects.addPlacemark(point).apply {
+                            setIcon(
+                                ImageProvider.fromBitmap(
+                                    createCircleMarkerBitmap("${index + 1}", color)
+                                ),
+                                IconStyle().apply {
+                                    anchor = PointF(0.5f, 0.5f)
+                                    scale = 0.8f
+                                }
+                            )
+                            zIndex = 12f
+                        }
+
+                        added.add(placemark)
+                    }
+
+                    val centerPoint = Point(
+                        cluster.center.y,
+                        cluster.center.x
                     )
 
-                    val placemark = yandexMap.mapObjects.addPlacemark(point).apply {
+                    val centerPlacemark = yandexMap.mapObjects.addPlacemark(centerPoint).apply {
                         setIcon(
                             ImageProvider.fromBitmap(
-                                createCircleMarkerBitmap("${index + 1}", color)
+                                createCircleMarkerBitmap("C", color)
                             ),
                             IconStyle().apply {
                                 anchor = PointF(0.5f, 0.5f)
-                                scale = 0.8f
+                                scale = 0.9f
                             }
                         )
-                        zIndex = 12f
+                        zIndex = 15f
                     }
 
-                    added.add(placemark)
+                    added.add(centerPlacemark)
                 }
-
-                val centerPoint = Point(
-                    cluster.center.y,
-                    cluster.center.x
-                )
-
-                val centerPlacemark = yandexMap.mapObjects.addPlacemark(centerPoint).apply {
-                    setIcon(
-                        ImageProvider.fromBitmap(
-                            createCircleMarkerBitmap("C", color)
-                        ),
-                        IconStyle().apply {
-                            anchor = PointF(0.5f, 0.5f)
-                            scale = 0.9f
-                        }
-                    )
-                    zIndex = 15f
-                }
-
-                added.add(centerPlacemark)
-            }
             }
         }
 
@@ -539,7 +532,7 @@ fun MapScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
 
-            )
+                )
         }
 
         AlgorithmSwitcher(
@@ -587,10 +580,7 @@ fun MapScreen(
             geneticViewModel = geneticViewModel,
             antViewModel = antViewModel,
             clusteringViewModel = clusteringViewModel
-
         )
-
-
     }
 
     if (viewModel.showNoPathDialog) {
@@ -617,40 +607,40 @@ private fun AlgorithmSwitcher(
     onDismiss: () -> Unit,
     onLocateMe: () -> Unit,
     onSelectAlgorithm: (RouteAlgorithm) -> Unit
+) {
+    if (isOpen) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Transparent)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) { onDismiss() }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp)
+            .widthIn(max = 240.dp),
+        horizontalAlignment = Alignment.Start
     ) {
-        if (isOpen) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Transparent)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }) { onDismiss() }
-            )
+        Button(onClick = onMenuToggle) { Text("☰") }
+
+        Button(
+            onClick = onThemeToggle,
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Text(if (isDarkTheme) "🌙" else "☀")
+        }
+        Button(
+            onClick = onLocateMe,
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Text("📍")
         }
 
-        Column(
-            modifier = Modifier
-                .padding(start = 12.dp, top = 35.dp, end = 12.dp, bottom = 12.dp)
-                .widthIn(max = 240.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Button(onClick = onMenuToggle) { Text("☰") }
-
-            Button(
-                onClick = onThemeToggle,
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                Text(if (isDarkTheme) "🌙" else "☀")
-            }
-            Button(
-                onClick = onLocateMe,
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                Text("📍")
-            }
-
-            AnimatedVisibility(
+        AnimatedVisibility(
             visible = isOpen,
             enter = slideInHorizontally { -it },
             exit = slideOutHorizontally { -it }) {
@@ -780,7 +770,7 @@ private fun AlgorithmLayer(
                 SettingsRightPanel(
                     expanded = antPanelExpanded,
                     onToggle = { antPanelExpanded = !antPanelExpanded },
-                    panelMaxWidth = 280.dp,
+                    panelMaxWidth = 320.dp,
                     panelMaxHeight = 720.dp
                 ) {
                     AntRoutePanel(viewModel = antViewModel)
@@ -834,7 +824,10 @@ private fun SettingsRightPanel(
             .padding(top = 35.dp, start = 8.dp, end = 8.dp, bottom = 8.dp),
         contentAlignment = Alignment.TopEnd
     ) {
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Button(onClick = onToggle) { Text("⚙") }
             AnimatedVisibility(visible = expanded) {
                 Card(modifier = Modifier.widthIn(max = panelMaxWidth)) {
@@ -987,17 +980,30 @@ private val RouteAlgorithm.title: String
         RouteAlgorithm.CLUSTERING -> "Кластеризация"
     }
 
+
 private fun getBestLastKnownLocation(context: Context): Location? {
-    val hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    val hasCoarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    val hasFine = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
+    val hasCoarse = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
     if (!hasFine && !hasCoarse) return null
 
-    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
-    val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
+    val locationManager =
+        context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+    val providers = listOf(
+        LocationManager.GPS_PROVIDER,
+        LocationManager.NETWORK_PROVIDER,
+        LocationManager.PASSIVE_PROVIDER
+    )
 
     var best: Location? = null
     for (provider in providers) {
-        val location = runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull() ?: continue
+        val location =
+            runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull() ?: continue
         if (location.time > (best?.time ?: Long.MIN_VALUE)) {
             best = location
         }

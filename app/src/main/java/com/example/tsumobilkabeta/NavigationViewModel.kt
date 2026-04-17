@@ -180,7 +180,7 @@ class NavigationViewModel : ViewModel() {
 
             if (steps.isNotEmpty()) {
                 isAnimating = true
-                val delayMs = (5000L / steps.size).coerceIn(10L, 80L)
+                val delayMs = (2000L / steps.size).coerceIn(10L, 80L)
                 for (step in steps) {
                     animClosed.value = step.closedSet
                     animOpen.value = step.openSet
