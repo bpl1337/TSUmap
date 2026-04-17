@@ -30,9 +30,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.example.tsumobilkabeta.floatArrayToBitmap
 import com.example.tsumobilkabeta.ui.theme.TSUMapTheme
 import java.io.File
+
 private const val ADMIN_MODE = false
 
 class AIMainActivity : ComponentActivity() {
@@ -42,15 +46,30 @@ class AIMainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             classifier.loadWeights()
         }
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+
         setContent {
             TSUMapTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
                     RatingApp(classifier)
                 }
             }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            WindowInsetsControllerCompat(window, window.decorView).hide(
+                WindowInsetsCompat.Type.systemBars()
+            )
         }
     }
 }
@@ -99,30 +118,36 @@ fun RatingApp(classifier: NnClassifier) {
 
         Spacer(Modifier.height(20.dp))
 
-        Box(Modifier.size(canvasSizeDp).clipToBounds().background(Color(0xFFF5F5F5))) {
+        Box(
+            Modifier
+                .size(canvasSizeDp)
+                .clipToBounds()
+                .background(Color(0xFFF5F5F5))
+        ) {
             Canvas(
-                Modifier.fillMaxSize().pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        if (down.position.x in 0f..canvasSizePx && down.position.y in 0f..canvasSizePx) {
-                            currentPath.moveTo(down.position.x, down.position.y)
-                            do {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.first()
-                                if (change.pressed) {
-                                    val pos = change.position
-                                    if (pos.x in 0f..canvasSizePx && pos.y in 0f..canvasSizePx) {
-                                        currentPath.lineTo(pos.x, pos.y)
-                                        change.consume()
-                                        val nextPath = Path().apply { addPath(currentPath) }
-                                        currentPath = nextPath
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown()
+                            if (down.position.x in 0f..canvasSizePx && down.position.y in 0f..canvasSizePx) {
+                                currentPath.moveTo(down.position.x, down.position.y)
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.first()
+                                    if (change.pressed) {
+                                        val pos = change.position
+                                        if (pos.x in 0f..canvasSizePx && pos.y in 0f..canvasSizePx) {
+                                            currentPath.lineTo(pos.x, pos.y)
+                                            change.consume()
+                                            val nextPath = Path().apply { addPath(currentPath) }
+                                            currentPath = nextPath
+                                        }
                                     }
-                                }
-                            } while (event.changes.any { it.pressed })
+                                } while (event.changes.any { it.pressed })
+                            }
                         }
-                    }
-                }
-            ) {
+                    }) {
                 drawPath(
                     path = currentPath,
                     color = Color.Black,
@@ -139,8 +164,7 @@ fun RatingApp(classifier: NnClassifier) {
                 digitResult = -1
                 confidence = 0f
                 debugBitmap = null
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
+            }, colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
         ) {
             Text("Стереть", color = Color.Black)
         }
@@ -161,9 +185,7 @@ fun RatingApp(classifier: NnClassifier) {
             )
         } else {
             Text(
-                text = "Нарисуйте оценку",
-                fontSize = 18.sp,
-                color = Color.Gray
+                text = "Нарисуйте оценку", fontSize = 18.sp, color = Color.Gray
             )
         }
 
@@ -188,7 +210,12 @@ fun RatingApp(classifier: NnClassifier) {
             Spacer(Modifier.height(8.dp))
 
             val totalSaved = countsPerDigit.sum()
-            Text("Панель датасета", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+            Text(
+                "Панель датасета",
+                fontSize = 13.sp,
+                color = Color.Gray,
+                fontWeight = FontWeight.Bold
+            )
             Text("Всего: $totalSaved образцов", fontSize = 11.sp, color = Color.Gray)
 
             if (adminStatus.isNotEmpty()) {
@@ -208,7 +235,8 @@ fun RatingApp(classifier: NnClassifier) {
                                         if (!currentPath.isEmpty) {
                                             val pixels = processDrawing2px(currentPath)
                                             saveSample(context, digit, pixels)
-                                            countsPerDigit = countsPerDigit.copyOf().also { it[digit]++ }
+                                            countsPerDigit =
+                                                countsPerDigit.copyOf().also { it[digit]++ }
                                             currentPath = Path()
                                             adminStatus = "Сохранено: цифра $digit"
                                         } else {
@@ -245,8 +273,7 @@ fun RatingApp(classifier: NnClassifier) {
                     } else {
                         adminStatus = "Датасет пуст"
                     }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C))
+                }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C))
             ) {
                 Text("Удалить последнюю запись", color = Color.White, fontSize = 13.sp)
             }
@@ -256,8 +283,7 @@ fun RatingApp(classifier: NnClassifier) {
 
 
 private fun saveSample(context: android.content.Context, label: Int, pixels: FloatArray) {
-    File(context.filesDir, "dataset_2px.txt")
-        .appendText("$label|${pixels.joinToString(",")}\n")
+    File(context.filesDir, "dataset_2px.txt").appendText("$label|${pixels.joinToString(",")}\n")
 }
 
 private fun deleteLastSample(context: android.content.Context): Int {

@@ -5,28 +5,40 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
-import com.example.tsumobilkabeta.R
+import androidx.compose.ui.graphics.Color
 
 private val LightColorScheme = lightColorScheme(
-    primary = LightBackGround,
-    secondary = LightSurface,
-    background = LightBackGround,
+    primary = LightPrimary,
+    onPrimary = Color.White,
+    secondary = LightSecondary,
+    onSecondary = LightOnBackground,
+    tertiary = LightTertiary,
+    onTertiary = Color.White,
+    background = LightBackground,
     surface = LightSurface,
-    onBackground = LgihtOnBackground,
-    onSurface = LgihtOnBackground
+    surfaceVariant = LightSurfaceVariant,
+    onBackground = LightOnBackground,
+    onSurface = LightOnSurface,
+    onSurfaceVariant = LightOnSurfaceVariant,
+    outline = LightOutline
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = DarkSurface,
-    secondary = DarkSurface,
-    background = DarkBackGround,
+    primary = DarkPrimary,
+    onPrimary = Color.White,
+    secondary = DarkSecondary,
+    onSecondary = DarkOnBackground,
+    tertiary = DarkTertiary,
+    onTertiary = Color.White,
+    background = DarkBackground,
     surface = DarkSurface,
+    surfaceVariant = DarkSurfaceVariant,
     onBackground = DarkOnBackground,
     onSurface = DarkOnBackground,
-    onPrimary = DarkOnBackground
+    onSurfaceVariant = DarkOnSurfaceVariant,
+    outline = DarkOutline
 )
+
 @Composable
 fun TSUMapTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -35,7 +47,8 @@ fun TSUMapTheme(
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(
-        colorScheme = colorScheme
+        colorScheme = colorScheme,
+        typography = Typography
     ) {
         content()
     }

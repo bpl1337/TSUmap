@@ -44,7 +44,7 @@ object RoutePrecomputer {
             for (j in i + 1 until n) {
                 val path = AStarPathfinder.findPath(grid, cells[i], cells[j])
                 val dist = if (path != null) AStarPathfinder.pathDistanceMeters(path)
-                           else Double.MAX_VALUE / 2
+                else Double.MAX_VALUE / 2
 
                 pathMatrix[i][j] = path
                 pathMatrix[j][i] = path?.reversed()

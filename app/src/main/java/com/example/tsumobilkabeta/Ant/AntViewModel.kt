@@ -1,7 +1,6 @@
 package com.example.tsumobilkabeta.Ant
 
 import android.content.Context
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -268,7 +267,8 @@ class AntViewModel : ViewModel() {
                 return@launch
             }
 
-            val locations = CoworkingDatabase.locations.filter { it.id in _selectedCoworkingIds.value }
+            val locations =
+                CoworkingDatabase.locations.filter { it.id in _selectedCoworkingIds.value }
             val snapped = locations.mapNotNull { loc ->
                 val orig = gridMap.QGisToGrid(loc.x, loc.y)
                 val snap = gridMap.snapToNear(orig, 30)
@@ -299,7 +299,8 @@ class AntViewModel : ViewModel() {
 
             for ((idx, assignment) in cwResult.assignments.withIndex()) {
                 val color = LEG_COLORS[idx % LEG_COLORS.size]
-                val locPt = GridProjection.metersToPoint(assignment.location.x, assignment.location.y)
+                val locPt =
+                    GridProjection.metersToPoint(assignment.location.x, assignment.location.y)
 
                 if (assignment.studentsAssigned > 0 && idx < validPaths.size) {
                     val mapPts = validPaths[idx].points.map { gridMap.gridToQgis(it) }
