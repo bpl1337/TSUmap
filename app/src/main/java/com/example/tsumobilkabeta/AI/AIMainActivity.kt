@@ -1,51 +1,36 @@
 package com.example.tsumobilkabeta.AI
 
 import android.os.Bundle
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import com.example.tsumobilkabeta.processDrawing2px
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.example.tsumobilkabeta.floatArrayToBitmap
+import com.example.tsumobilkabeta.Genetic.FoodDatabase
+import com.example.tsumobilkabeta.Genetic.FoodEstablishment
 import com.example.tsumobilkabeta.ui.theme.TSUMapTheme
 import java.io.File
+import kotlin.math.roundToInt
 
 private const val ADMIN_MODE = false
 
 class AIMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val classifier = NnClassifier(this)
-        lifecycleScope.launch(Dispatchers.IO) {
-            classifier.loadWeights()
-        }
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -58,7 +43,7 @@ class AIMainActivity : ComponentActivity() {
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
-                    RatingApp(classifier)
+                    RatingApp()
                 }
             }
         }
@@ -75,208 +60,163 @@ class AIMainActivity : ComponentActivity() {
 }
 
 @Composable
-fun RatingApp(classifier: NnClassifier) {
+fun RatingApp() {
     val context = LocalContext.current
 
-    var debugBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    val establishments = remember { FoodDatabase.allEstablishments }
     var currentPath by remember { mutableStateOf(Path()) }
-    var digitResult by remember { mutableStateOf(-1) }
-    var confidence by remember { mutableStateOf(0f) }
     var adminStatus by remember { mutableStateOf("") }
     var countsPerDigit by remember { mutableStateOf(countSamplesPerDigit(context)) }
 
-    val canvasSizeDp = 300.dp
-    val canvasSizePx = with(LocalDensity.current) { canvasSizeDp.toPx() }
-
-    LaunchedEffect(currentPath) {
-        if (currentPath.isEmpty) {
-            digitResult = -1
-            confidence = 0f
-            debugBitmap = null
-            return@LaunchedEffect
-        }
-        delay(80)
-        val result = withContext(Dispatchers.Default) {
-            val pixels = processDrawing2px(currentPath)
-            val (digit, conf) = classifier.classifyWithConfidence(pixels)
-            Triple(digit, conf, floatArrayToBitmap(pixels))
-        }
-        digitResult = result.first
-        confidence = result.second
-        debugBitmap = result.third
-    }
-
     Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier.fillMaxSize()
     ) {
-        Spacer(Modifier.height(40.dp))
-        Text("Рейтинг заведения", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-
-        Spacer(Modifier.height(20.dp))
-
-        Box(
-            Modifier
-                .size(canvasSizeDp)
-                .clipToBounds()
-                .background(Color(0xFFF5F5F5))
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Canvas(
-                Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            val down = awaitFirstDown()
-                            if (down.position.x in 0f..canvasSizePx && down.position.y in 0f..canvasSizePx) {
-                                currentPath.moveTo(down.position.x, down.position.y)
-                                do {
-                                    val event = awaitPointerEvent()
-                                    val change = event.changes.first()
-                                    if (change.pressed) {
-                                        val pos = change.position
-                                        if (pos.x in 0f..canvasSizePx && pos.y in 0f..canvasSizePx) {
-                                            currentPath.lineTo(pos.x, pos.y)
-                                            change.consume()
-                                            val nextPath = Path().apply { addPath(currentPath) }
-                                            currentPath = nextPath
+            item {
+                Spacer(Modifier.height(24.dp))
+                Text("Заведения", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+            }
+
+            items(establishments) { establishment ->
+                EstablishmentCard(
+                    establishment = establishment,
+                    onClick = {
+                        context.startActivity(
+                            EstablishmentRatingActivity.createIntent(context, establishment.id)
+                        )
+                    }
+                )
+            }
+
+            if (ADMIN_MODE) {
+                item {
+                    HorizontalDivider()
+                    Spacer(Modifier.height(8.dp))
+
+                    val totalSaved = countsPerDigit.sum()
+                    Text(
+                        "Панель датасета",
+                        fontSize = 13.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text("Всего: $totalSaved образцов", fontSize = 11.sp, color = Color.Gray)
+
+                    if (adminStatus.isNotEmpty()) {
+                        Text(adminStatus, fontSize = 12.sp, color = Color(0xFF1565C0))
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                item {
+                    val digits = (0..9).toList()
+                    Column {
+                        listOf(digits.take(5), digits.drop(5)).forEach { row ->
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                row.forEach { digit ->
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Button(
+                                            onClick = {
+                                                if (!currentPath.isEmpty) {
+                                                    val pixels = processDrawing2px(currentPath)
+                                                    saveSample(context, digit, pixels)
+                                                    countsPerDigit =
+                                                        countsPerDigit.copyOf().also { it[digit]++ }
+                                                    currentPath = Path()
+                                                    adminStatus = "Сохранено: цифра $digit"
+                                                } else {
+                                                    adminStatus = "Сначала нарисуй!"
+                                                }
+                                            },
+                                            modifier = Modifier.size(48.dp),
+                                            contentPadding = PaddingValues(0.dp)
+                                        ) {
+                                            Text(digit.toString(), fontSize = 16.sp)
                                         }
+                                        Text(
+                                            text = "${countsPerDigit[digit]}",
+                                            fontSize = 10.sp,
+                                            color = Color.Gray
+                                        )
                                     }
-                                } while (event.changes.any { it.pressed })
-                            }
-                        }
-                    }) {
-                drawPath(
-                    path = currentPath,
-                    color = Color.Black,
-                    style = Stroke(width = 30f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Button(
-            onClick = {
-                currentPath = Path()
-                digitResult = -1
-                confidence = 0f
-                debugBitmap = null
-            }, colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
-        ) {
-            Text("Стереть", color = Color.Black)
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        if (digitResult != -1) {
-            Text(
-                text = "$digitResult",
-                fontSize = 64.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF2E7D32)
-            )
-            Text(
-                text = "${(confidence * 100).toInt()}% уверен",
-                fontSize = 16.sp,
-                color = Color(0xFF558B2F)
-            )
-        } else {
-            Text(
-                text = "Нарисуйте оценку", fontSize = 18.sp, color = Color.Gray
-            )
-        }
-
-        if (debugBitmap != null) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Так видит нейронка (50x50):", fontSize = 12.sp, color = Color.Gray)
-                Spacer(Modifier.height(4.dp))
-                androidx.compose.foundation.Image(
-                    bitmap = debugBitmap!!,
-                    contentDescription = "Debug View",
-                    modifier = Modifier
-                        .size(100.dp)
-                        .background(Color.White)
-                        .border(1.dp, Color.LightGray)
-                )
-            }
-        }
-
-        if (ADMIN_MODE) {
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(8.dp))
-
-            val totalSaved = countsPerDigit.sum()
-            Text(
-                "Панель датасета",
-                fontSize = 13.sp,
-                color = Color.Gray,
-                fontWeight = FontWeight.Bold
-            )
-            Text("Всего: $totalSaved образцов", fontSize = 11.sp, color = Color.Gray)
-
-            if (adminStatus.isNotEmpty()) {
-                Text(adminStatus, fontSize = 12.sp, color = Color(0xFF1565C0))
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            val digits = (0..9).toList()
-            Column {
-                listOf(digits.take(5), digits.drop(5)).forEach { row ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        row.forEach { digit ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Button(
-                                    onClick = {
-                                        if (!currentPath.isEmpty) {
-                                            val pixels = processDrawing2px(currentPath)
-                                            saveSample(context, digit, pixels)
-                                            countsPerDigit =
-                                                countsPerDigit.copyOf().also { it[digit]++ }
-                                            currentPath = Path()
-                                            adminStatus = "Сохранено: цифра $digit"
-                                        } else {
-                                            adminStatus = "Сначала нарисуй!"
-                                        }
-                                    },
-                                    modifier = Modifier.size(48.dp),
-                                    contentPadding = PaddingValues(0.dp)
-                                ) {
-                                    Text(digit.toString(), fontSize = 16.sp)
                                 }
-                                Text(
-                                    text = "${countsPerDigit[digit]}",
-                                    fontSize = 10.sp,
-                                    color = Color.Gray
-                                )
                             }
+                            Spacer(Modifier.height(4.dp))
                         }
                     }
-                    Spacer(Modifier.height(4.dp))
+                }
+
+                item {
+                    Button(
+                        onClick = {
+                            val deletedDigit = deleteLastSample(context)
+                            if (deletedDigit != -1) {
+                                countsPerDigit = countsPerDigit.copyOf().also {
+                                    it[deletedDigit] = maxOf(0, it[deletedDigit] - 1)
+                                }
+                                adminStatus = "Удалена последняя запись (цифра $deletedDigit)"
+                            } else {
+                                adminStatus = "Датасет пуст"
+                            }
+                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C))
+                    ) {
+                        Text("Удалить последнюю запись", color = Color.White, fontSize = 13.sp)
+                    }
                 }
             }
+        }
+    }
+}
 
-            Spacer(Modifier.height(8.dp))
-
-            Button(
-                onClick = {
-                    val deletedDigit = deleteLastSample(context)
-                    if (deletedDigit != -1) {
-                        countsPerDigit = countsPerDigit.copyOf().also {
-                            it[deletedDigit] = maxOf(0, it[deletedDigit] - 1)
-                        }
-                        adminStatus = "Удалена последняя запись (цифра $deletedDigit)"
-                    } else {
-                        adminStatus = "Датасет пуст"
-                    }
-                }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C))
-            ) {
-                Text("Удалить последнюю запись", color = Color.White, fontSize = 13.sp)
-            }
+@Composable
+private fun EstablishmentCard(
+    establishment: FoodEstablishment,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(establishment.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            val avg = (establishment.averageRating.floatValue * 10f).roundToInt() / 10f
+            Text(
+                text = "Рейтинг: $avg (${establishment.ratingsCount()} оценок)",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = establishment.menu.take(3).joinToString(", ") { it.name },
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+            Text(
+                text = "Открыто: ${
+                    establishment.openHour.toString().padStart(2, '0')
+                }:${
+                    establishment.openMinute.toString().padStart(2, '0')
+                } - ${
+                    establishment.closeHour.toString().padStart(2, '0')
+                }:${establishment.closeMinute.toString().padStart(2, '0')}",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

@@ -32,6 +32,10 @@
             android:exported="false"
             android:theme="@style/Theme.TSUmobilkaBETA.Screen.NoTitleBar" />
         <activity
+            android:name=".AI.EstablishmentRatingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TSUmobilkaBETA.Screen.NoTitleBar" />
+        <activity
             android:name=".DecisionTree.DecisionTreeActivity"
             android:exported="false"
             android:theme="@style/Theme.TSUmobilkaBETA.Screen.NoTitleBar" />

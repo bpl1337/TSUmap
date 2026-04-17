@@ -1,5 +1,7 @@
 package com.example.tsumobilkabeta.Genetic
 
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
 import com.yandex.mapkit.geometry.Point
 
 data class MenuItem(val name: String, val category: FoodCategory)
@@ -16,8 +18,32 @@ data class FoodEstablishment(
     val openHour: Int,
     val openMinute: Int,
     val closeHour: Int,
-    val closeMinute: Int
+    val closeMinute: Int,
+    val seedRatings: List<Int> = listOf()
 ) {
+    val ratings = mutableStateListOf<Int>().apply {
+        addAll(seedRatings.map { it.coerceIn(0, 9) })
+    }
+
+    val averageRating = mutableFloatStateOf(computeAverage())
+
+    fun addRating(value: Int) {
+        ratings.add(value.coerceIn(0, 9))
+        averageRating.floatValue = computeAverage()
+    }
+
+    fun clearRatings() {
+        ratings.clear()
+        averageRating.floatValue = 0f
+    }
+
+    fun ratingsCount(): Int = ratings.size
+
+    private fun computeAverage(): Float {
+        if (ratings.isEmpty()) return 0f
+        return ratings.sum().toFloat() / ratings.size
+    }
+
     fun isOpenAt(hour: Int, minute: Int): Boolean {
         val now = hour * 60 + minute
         val open = openHour * 60 + openMinute
@@ -33,7 +59,7 @@ object FoodDatabase {
 
     val allEstablishments = listOf(
         FoodEstablishment(
-            id = 0, name = "Старбакс",
+            id = 0, name = "Старбукс",
             location = Point(56.46966, 84.94598),
             menu = listOf(
                 MenuItem("Капучино", FoodCategory.DRINK),
