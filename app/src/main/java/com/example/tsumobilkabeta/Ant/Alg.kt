@@ -7,7 +7,6 @@ import kotlin.math.pow
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
-import java.io.File
 
 data class Result(
     val allPlaces: List<Places>,
