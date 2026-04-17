@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.sp
 fun FoodRoutePanel(
     viewModel: GeneticFoodViewModel
 ) {
-    val phase     by viewModel.phase
-    val errorMsg  by viewModel.errorMsg
+    val phase by viewModel.phase
+    val errorMsg by viewModel.errorMsg
 
     var selectedItems by remember { mutableStateOf(setOf<String>()) }
 
@@ -34,13 +34,13 @@ fun FoodRoutePanel(
             errorMsg = errorMsg,
             onToggleItem = { item ->
                 selectedItems = if (item in selectedItems) selectedItems - item
-                                else selectedItems + item
+                else selectedItems + item
             },
             onStart = { viewModel.startGA(selectedItems) }
         )
 
         GeneticPhase.PRECOMPUTING -> {
-            val done  by viewModel.precompDone
+            val done by viewModel.precompDone
             val total by viewModel.precompTotal
             ProgressPanel(
                 title = "Вычисление дорог...",
@@ -98,7 +98,9 @@ private fun SelectionPanel(
     Column(modifier = Modifier.fillMaxWidth()) {
         Button(
             onClick = { viewModel.requestStartPoint() },
-            modifier = Modifier.fillMaxWidth().height(40.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (startNode != null) Color(0xFF16A34A) else Color(0xFFEA580C),
@@ -116,7 +118,9 @@ private fun SelectionPanel(
         Text("Выберите блюда:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Spacer(Modifier.height(4.dp))
 
-        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+        LazyColumn(modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 300.dp)) {
             for ((category, items) in categoryGroups) {
                 item {
                     Text(
@@ -156,8 +160,10 @@ private fun SelectionPanel(
                         Spacer(Modifier.width(6.dp))
                         Column {
                             Text(itemName, fontSize = 13.sp)
-                            Text(sources.joinToString(", ") { it.name },
-                                fontSize = 9.sp, color = Color.Gray)
+                            Text(
+                                sources.joinToString(", ") { it.name },
+                                fontSize = 9.sp, color = Color.Gray
+                            )
                         }
                     }
                 }
@@ -167,13 +173,17 @@ private fun SelectionPanel(
         Spacer(Modifier.height(6.dp))
 
         if (errorMsg != null) {
-            Text(errorMsg, color = Color.Red, fontSize = 11.sp,
-                modifier = Modifier.padding(bottom = 4.dp))
+            Text(
+                errorMsg, color = Color.Red, fontSize = 11.sp,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
         }
 
         Button(
             onClick = onStart,
-            modifier = Modifier.fillMaxWidth().height(40.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp),
             shape = RoundedCornerShape(8.dp),
             enabled = selectedItems.isNotEmpty() && startNode != null,
             colors = ButtonDefaults.buttonColors(
@@ -193,25 +203,33 @@ private fun ProgressPanel(
     extra: String? = null,
     onCancel: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(4.dp)) {
         Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF2563EB))
         Spacer(Modifier.height(6.dp))
         LinearProgressIndicator(
             progress = { progress.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp),
             color = Color(0xFF2563EB),
             trackColor = Color(0xFFE5E7EB)
         )
         Spacer(Modifier.height(4.dp))
         Text(detail, fontSize = 11.sp, color = Color.Gray)
         if (extra != null) {
-            Text(extra, fontSize = 12.sp, color = Color(0xFF2563EB),
-                modifier = Modifier.padding(top = 2.dp))
+            Text(
+                extra, fontSize = 12.sp, color = Color(0xFF2563EB),
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = onCancel,
-            modifier = Modifier.fillMaxWidth().height(36.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp),
             shape = RoundedCornerShape(8.dp)
         ) { Text("Отмена", fontSize = 12.sp) }
     }
@@ -225,19 +243,25 @@ private fun ResultPanel(
     onReset: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
     ) {
         if (route == null) {
             Text("Маршрут не найден", color = Color.Red, fontWeight = FontWeight.Bold)
         } else {
-            Text("Маршрут построен!", fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                color = Color(0xFF16A34A))
+            Text(
+                "Маршрут построен!", fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                color = Color(0xFF16A34A)
+            )
             Spacer(Modifier.height(6.dp))
 
-            Text("${"%.0f".format(route.totalDistMeters)} м · " +
-                 "${"%.0f".format(route.totalTimeMin)} мин · " +
-                 "${route.establishments.size} заведений",
-                fontSize = 12.sp, color = Color(0xFF374151))
+            Text(
+                "${"%.0f".format(route.totalDistMeters)} м · " +
+                        "${"%.0f".format(route.totalTimeMin)} мин · " +
+                        "${route.establishments.size} заведений",
+                fontSize = 12.sp, color = Color(0xFF374151)
+            )
 
             Spacer(Modifier.height(8.dp))
 
@@ -260,8 +284,10 @@ private fun ResultPanel(
                             .background(Color(0xFF2563EB), RoundedCornerShape(11.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("${idx + 1}", color = Color.White, fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold)
+                        Text(
+                            "${idx + 1}", color = Color.White, fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                     Spacer(Modifier.width(6.dp))
                     Column {
@@ -270,7 +296,7 @@ private fun ResultPanel(
                             Text(items, fontSize = 11.sp, color = Color(0xFF374151))
                         Text(
                             "${est.openHour}:${"%02d".format(est.openMinute)} — " +
-                            "${est.closeHour}:${"%02d".format(est.closeMinute)}",
+                                    "${est.closeHour}:${"%02d".format(est.closeMinute)}",
                             fontSize = 10.sp, color = Color(0xFF9CA3AF)
                         )
                     }
@@ -281,7 +307,9 @@ private fun ResultPanel(
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = onReset,
-            modifier = Modifier.fillMaxWidth().height(36.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF6B7280), contentColor = Color.White

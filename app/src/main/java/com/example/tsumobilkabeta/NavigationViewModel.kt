@@ -24,6 +24,7 @@ class NavigationViewModel : ViewModel() {
     val endPoint: MutableState<Point?> = mutableStateOf(null)
     val selectionMode: MutableState<PointSelectionMode> = mutableStateOf(PointSelectionMode.START)
     val selectedAlgorithm: MutableState<RouteAlgorithm> = mutableStateOf(RouteAlgorithm.ASTAR)
+    val aStarAnimationEnabled: MutableState<Boolean> = mutableStateOf(false)
 
     var gridLoaded by mutableStateOf(false)
         private set
@@ -57,6 +58,7 @@ class NavigationViewModel : ViewModel() {
     fun setStartPoint(point: Point) { startPoint.value = point }
     fun setEndPoint(point: Point) { endPoint.value = point }
     fun setSelectionMode(mode: PointSelectionMode) { selectionMode.value = mode }
+    fun setAStarAnimationEnabled(enabled: Boolean) { aStarAnimationEnabled.value = enabled }
 
     fun selectAlgorithm(algorithm: RouteAlgorithm) {
         selectedAlgorithm.value = algorithm
@@ -153,6 +155,20 @@ class NavigationViewModel : ViewModel() {
         clearAnimState()
         pathStatus = PathStatus.SEARCHING
 
+        if (!aStarAnimationEnabled.value) {
+            animationJob = viewModelScope.launch {
+                val path = withContext(Dispatchers.Default) {
+                    runCatching { AStarPathfinder.findPath(g, startNode, endNode) }
+                        .getOrNull()
+                        .orEmpty()
+                }
+                computedPath = path
+                pathStatus = if (path.isEmpty()) PathStatus.NOT_FOUND else PathStatus.FOUND
+                applyComputedPath(g)
+            }
+            return
+        }
+
         animationJob = viewModelScope.launch {
             val (path, steps) = withContext(Dispatchers.Default) {
                 runCatching { AStarPathfinder.findPathWithSteps(g, startNode, endNode) }
@@ -190,3 +206,4 @@ enum class PointSelectionMode { START, END, BARRIER }
 enum class RouteAlgorithm { ASTAR, ANT, ANOTHER, DECISION_TREE, GENETIC, CLUSTERING}
 
 enum class PathStatus { NONE, SEARCHING, FOUND, NOT_FOUND }
+

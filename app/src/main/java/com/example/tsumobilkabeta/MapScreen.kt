@@ -1,28 +1,41 @@
 package com.example.tsumobilkabeta
 
+import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.PointF
+import android.location.Location
+import android.location.LocationManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -39,21 +52,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tsumobilkabeta.AI.AIMainActivity
 import com.example.tsumobilkabeta.AStar.AStarOverlayView
-import com.example.tsumobilkabeta.Ant.AntDrawableRoute
 import com.example.tsumobilkabeta.Ant.AntRoutePanel
 import com.example.tsumobilkabeta.Ant.AntViewModel
-import com.example.tsumobilkabeta.Clustering.Cluster
 import com.example.tsumobilkabeta.Clustering.ClusteringViewModel
 import com.example.tsumobilkabeta.DecisionTree.DecisionTreeActivity
-import com.example.tsumobilkabeta.Genetic.DrawableRoute
 import com.example.tsumobilkabeta.Genetic.FoodRoutePanel
 import com.example.tsumobilkabeta.Genetic.GeneticFoodViewModel
 import com.example.tsumobilkabeta.ui.theme.BorderColor
@@ -80,6 +92,8 @@ import com.example.tsumobilkabeta.Clustering.ClusteringPanel
 fun MapScreen(
     modifier: Modifier = Modifier,
     viewModel: NavigationViewModel = viewModel(),
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit,
     workAreaBounds: WorkAreaBounds = WorkAreaBounds(
         minLatitude = 56.462946,
         maxLatitude = 56.476156,
@@ -87,6 +101,7 @@ fun MapScreen(
         maxLongitude = 84.957602
     )
 ) {
+
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -100,6 +115,10 @@ fun MapScreen(
     val antViewModel: AntViewModel = viewModel()
     val clusteringViewModel: ClusteringViewModel= viewModel()
 
+    var myLocationPoint by remember { mutableStateOf<Point?>(null) }
+
+
+
     LaunchedEffect(Unit) {
         viewModel.loadGrid(context)
         geneticViewModel.loadGrid(context)
@@ -108,11 +127,71 @@ fun MapScreen(
 
     val mapView = remember {
         MapView(context).apply {
-            mapWindow.map.isNightModeEnabled = true
+            mapWindow.map.isNightModeEnabled = isDarkTheme
             mapWindow.map.move(CameraPosition(workAreaBounds.centerPoint, 16f, 0f, 0f))
         }
     }
     val yandexMap = mapView.mapWindow.map
+
+    val hasLocationPermission = remember(context) {
+        {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    val moveToCurrentLocation: () -> Unit = remember(context, yandexMap) {
+        {
+            val location = getBestLastKnownLocation(context)
+            if (location == null) {
+                Toast.makeText(context, "Локация недоступна", Toast.LENGTH_SHORT).show()
+            } else {
+                val point = Point(location.latitude, location.longitude)
+                myLocationPoint = point
+                yandexMap.move(
+                    CameraPosition(point, 17f, 0f, 0f),
+                    Animation(Animation.Type.SMOOTH, 0.4f),
+                    null
+                )
+            }
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        val allowed = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (allowed) {
+            moveToCurrentLocation()
+        } else {
+            Toast.makeText(context, "Разрешение на геолокацию не выдано", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val onLocateMeClick = remember(context, hasLocationPermission, locationPermissionLauncher, moveToCurrentLocation) {
+        {
+            if (hasLocationPermission()) {
+                moveToCurrentLocation()
+            } else {
+                val activity = context as? Activity
+                if (activity == null) {
+                    Toast.makeText(context, "Не удалось запросить разрешение", Toast.LENGTH_SHORT).show()
+                } else {
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(isDarkTheme) {
+        mapView.mapWindow.map.isNightModeEnabled = isDarkTheme
+    }
 
     val overlayView = remember { AStarOverlayView(context) }
     val isAutoCorrecting = remember { booleanArrayOf(false) }
@@ -386,6 +465,22 @@ fun MapScreen(
         }
     }
 
+    DisposableEffect(yandexMap, myLocationPoint) {
+        val marker = myLocationPoint?.let { point ->
+            yandexMap.mapObjects.addPlacemark(point).apply {
+                setIcon(
+                    imageProviderFromDrawable(context, R.drawable.im_here),
+                    IconStyle().apply {
+                        anchor = PointF(0.5f, 0.5f)
+                        scale = 0.05f
+                    }
+                )
+                zIndex = 20f
+            }
+        }
+        onDispose { marker?.let { runCatching { yandexMap.mapObjects.remove(it) } } }
+    }
+
     val barriers = viewModel.barrierNodes.value
     val animClosed = viewModel.animClosed.value
     val animOpen = viewModel.animOpen.value
@@ -394,6 +489,23 @@ fun MapScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(modifier = Modifier.fillMaxSize(), factory = { mapView })
+        Row(
+            modifier = Modifier.align(Alignment.BottomEnd)
+                .width(110.dp)
+                .height(50.dp)
+                .background(
+                    color = (MaterialTheme.colorScheme.background),
+                    shape = MaterialTheme.shapes.small)
+                .border(3.dp, BorderColor, shape = MaterialTheme.shapes.small),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "TSU.Map",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center
+            )
+        }
 
         AndroidView(
             modifier = Modifier.fillMaxSize(),
@@ -412,10 +524,12 @@ fun MapScreen(
         AlgorithmLayer(
             selectedAlgorithm = selectedAlgorithm,
             selectionMode = selectionMode,
+            aStarAnimationEnabled = viewModel.aStarAnimationEnabled.value,
             hasBothPoints = hasBothPoints,
             pathStatus = viewModel.pathStatus,
             isAnimating = viewModel.isAnimating,
             onSelectionModeChange = { viewModel.setSelectionMode(it) },
+            onAStarAnimationEnabledChange = { viewModel.setAStarAnimationEnabled(it) },
             onBuildRoute = { viewModel.buildRouteIfReady() },
             onReset = { viewModel.resetPoints() },
             onSkipAnimation = { viewModel.skipAnimation() },
@@ -428,8 +542,11 @@ fun MapScreen(
         AlgorithmSwitcher(
             isOpen = isAlgorithmMenuOpen,
             selectedAlgorithm = selectedAlgorithm,
+            isDarkTheme = isDarkTheme,
             onMenuToggle = { isAlgorithmMenuOpen = !isAlgorithmMenuOpen },
             onDismiss = { isAlgorithmMenuOpen = false },
+            onThemeToggle = onThemeToggle,
+            onLocateMe = onLocateMeClick,
             onSelectAlgorithm = {
                 when (it) {
                     RouteAlgorithm.ANOTHER -> context.startActivity(Intent(context, AIMainActivity::class.java))
@@ -459,8 +576,11 @@ fun MapScreen(
 private fun AlgorithmSwitcher(
     isOpen: Boolean,
     selectedAlgorithm: RouteAlgorithm,
+    isDarkTheme: Boolean,
     onMenuToggle: () -> Unit,
     onDismiss: () -> Unit,
+    onThemeToggle: () -> Unit,
+    onLocateMe: () -> Unit,
     onSelectAlgorithm: (RouteAlgorithm) -> Unit
 ) {
     if (isOpen) {
@@ -477,6 +597,18 @@ private fun AlgorithmSwitcher(
         horizontalAlignment = Alignment.Start
     ) {
         Button(onClick = onMenuToggle) { Text("☰") }
+        Button(
+            onClick = onThemeToggle,
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Text(if (isDarkTheme) "☽" else "☀")
+        }
+        Button(
+            onClick = onLocateMe,
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Text("📍")
+        }
 
         AnimatedVisibility(visible = isOpen, enter = slideInHorizontally { -it }, exit = slideOutHorizontally { -it }) {
             Card(modifier = Modifier.padding(top = 8.dp)) {
@@ -497,10 +629,12 @@ private fun AlgorithmSwitcher(
 private fun AlgorithmLayer(
     selectedAlgorithm: RouteAlgorithm,
     selectionMode: PointSelectionMode,
+    aStarAnimationEnabled: Boolean,
     hasBothPoints: Boolean,
     pathStatus: PathStatus,
     isAnimating: Boolean,
     onSelectionModeChange: (PointSelectionMode) -> Unit,
+    onAStarAnimationEnabledChange: (Boolean) -> Unit,
     onBuildRoute: () -> Unit,
     onReset: () -> Unit,
     onSkipAnimation: () -> Unit,
@@ -519,8 +653,15 @@ private fun AlgorithmLayer(
                     ModeButton("Старт", selectionMode == PointSelectionMode.START) { onSelectionModeChange(PointSelectionMode.START) }
                     ModeButton("Финиш", selectionMode == PointSelectionMode.END) { onSelectionModeChange(PointSelectionMode.END) }
                     ModeButton("Барьеры", selectionMode == PointSelectionMode.BARRIER) { onSelectionModeChange(PointSelectionMode.BARRIER) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = aStarAnimationEnabled,
+                            onCheckedChange = onAStarAnimationEnabledChange
+                        )
+                        Text("Анимация")
+                    }
                     Button(onClick = onBuildRoute, enabled = hasBothPoints && !isAnimating) { Text("Готово") }
-                    if (isAnimating) {
+                    if (isAnimating && aStarAnimationEnabled) {
                         Button(onClick = onSkipAnimation) { Text("Пропустить") }
                     }
                     Button(onClick = onReset) { Text("Сброс") }
@@ -713,3 +854,22 @@ private val RouteAlgorithm.title: String get() = when (this) {
     RouteAlgorithm.DECISION_TREE -> "Дерево решений"
     RouteAlgorithm.CLUSTERING -> "Кластеризация"
 }
+
+private fun getBestLastKnownLocation(context: Context): Location? {
+    val hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    val hasCoarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    if (!hasFine && !hasCoarse) return null
+
+    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+    val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
+
+    var best: Location? = null
+    for (provider in providers) {
+        val location = runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull() ?: continue
+        if (location.time > (best?.time ?: Long.MIN_VALUE)) {
+            best = location
+        }
+    }
+    return best
+}
+
