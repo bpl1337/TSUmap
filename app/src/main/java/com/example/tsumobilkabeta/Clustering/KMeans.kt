@@ -1,6 +1,8 @@
 package com.example.tsumobilkabeta.Clustering
 
-import kotlin.math.sqrt
+import com.example.tsumobilkabeta.Clustering.metric.DistMetric
+import com.example.tsumobilkabeta.Clustering.model.Establishments
+import com.example.tsumobilkabeta.Clustering.model.Point
 import kotlin.random.Random
 
 data class Cluster(
@@ -11,7 +13,8 @@ data class Cluster(
 object KMeans{
     fun clusterize(
         establishments: List<Establishments>,
-        k: Int
+        k: Int,
+        metric: DistMetric
     ): List<Cluster> {
 
         var centers = establishments
@@ -22,7 +25,7 @@ object KMeans{
 
             establishments.forEach { establishment ->
                 val nearestCenterIndex = centers.indices.minBy { index ->
-                    dist(establishment.coordinate, centers[index])
+                    metric.dist(establishment.coordinate, centers[index])
                 }
                 groupedItems[nearestCenterIndex].add(establishment)
             }
@@ -45,7 +48,7 @@ object KMeans{
 
         establishments.forEach { establishment ->
             val nearestCenterIndex = centers.indices.minBy { index ->
-                dist(establishment.coordinate, centers[index])
+                metric.dist(establishment.coordinate, centers[index])
             }
             groupedItems[nearestCenterIndex].add(establishment)
         }
@@ -57,15 +60,8 @@ object KMeans{
 
 }
 
-
-fun dist(a: Point,b:Point): Double{
-    val dx =a.x-b.x
-    val dy = a.y-b.y
-    return sqrt(dx*dx+dy*dy)
-}
-
-fun findCenter(items: List<Establishments>): Point{
+fun findCenter(items: List<Establishments>): Point {
     val x = items.map{it.coordinate.x}.average()
     val y = items.map{it.coordinate.y}.average()
-    return Point(x,y)
+    return Point(x, y)
 }
