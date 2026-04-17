@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Calendar
 
 data class DrawableRoute(
     val segments: List<List<Point>>,
@@ -37,7 +38,6 @@ class GeneticFoodViewModel : ViewModel() {
     }
 
     private val _awaitingStart = mutableStateOf(false)
-    val awaitingStart: State<Boolean> = _awaitingStart
 
     private val _startNode = mutableStateOf<GridNode?>(null)
     val startNode: State<GridNode?> = _startNode
@@ -130,10 +130,16 @@ class GeneticFoodViewModel : ViewModel() {
 
             withContext(Dispatchers.Main) { _phase.value = GeneticPhase.RUNNING_GA }
 
+            val cal = Calendar.getInstance()
+            val nowHour   = cal.get(Calendar.HOUR_OF_DAY)
+            val nowMinute = cal.get(Calendar.MINUTE)
+
             val ga = GeneticAlgorithm(
                 data = precomputed,
                 requiredItems = selectedItems,
-                totalGenerations = gaTotalGenerations
+                totalGenerations = gaTotalGenerations,
+                startHour = nowHour,
+                startMinute = nowMinute
             )
 
             val updateEvery = 15
@@ -165,12 +171,6 @@ class GeneticFoodViewModel : ViewModel() {
         _gaGeneration.intValue = 0
         _errorMsg.value = null
         _phase.value = GeneticPhase.SELECT
-    }
-
-    fun fullReset() {
-        reset()
-        _startNode.value = null
-        _startPoint.value = null
     }
 
     private fun routeToDrawable(route: Route, grid: WalkabilityGrid, isFinal: Boolean): DrawableRoute {

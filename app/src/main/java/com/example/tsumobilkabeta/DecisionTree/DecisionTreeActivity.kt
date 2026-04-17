@@ -1,6 +1,7 @@
 package com.example.tsumobilkabeta.DecisionTree
 
 import android.os.Bundle
+import kotlin.math.sqrt
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -51,6 +52,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -62,6 +64,10 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import com.example.tsumobilkabeta.ui.theme.TSUMapTheme
 
 class DecisionTreeActivity : ComponentActivity() {
@@ -97,7 +103,7 @@ fun DecisionTreeScreen() {
         Phase.INPUT -> InputScreen(
             csvText = csvText,
             error = error,
-            onCsvChange = { csvText = it; error = null },
+            onCsvChange = { },
             onSample = { csvText = DecisionTreeData.loadSampleCsv(context); error = null },
             onBuild = {
                 try {
@@ -228,9 +234,12 @@ private fun TreeScreen(
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-            LegendItem(Color(0xFF3A8EFF), "Вопрос")
-            LegendItem(Color(0xFF2ECC71), "Заведение")
+            LegendItem(Color.White, Color(0xFF1E88E5), "Вопрос")
+            LegendItem(Color(0xFF43A047), Color(0xFF2E7D32), "Заведение")
         }
+        var scale     by remember { mutableStateOf(1f) }
+        var panOffset by remember { mutableStateOf(Offset.Zero) }
+
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -238,12 +247,28 @@ private fun TreeScreen(
                 .clip(RoundedCornerShape(14.dp))
                 .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
                 .background(MaterialTheme.colorScheme.surface)
+                .pointerInput(Unit) {
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        val oldScale = scale
+                        scale = (scale * zoom).coerceIn(0.2f, 5f)
+                        val z = scale / oldScale
+                        panOffset = Offset(
+                            panOffset.x * z + centroid.x * (1f - z) + pan.x,
+                            panOffset.y * z + centroid.y * (1f - z) + pan.y
+                        )
+                    }
+                }
         ) {
             Box(
                 modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = panOffset.x
+                        translationY = panOffset.y
+                        transformOrigin = TransformOrigin(0f, 0f)
+                    }
+                    .padding(16.dp)
             ) {
                 TreeCanvas(active)
             }
@@ -259,11 +284,10 @@ private fun TreeScreen(
     }
 }
 
-private const val NODE_W  = 116f
-private const val NODE_H  = 52f
-private const val V_STEP  = 140f
-private const val H_STEP  = 140f
-private const val PADDING = 20f
+private const val NODE_R  = 32f
+private const val V_STEP  = 115f
+private const val H_STEP  = 78f
+private const val PADDING = 16f
 
 private data class LayoutNode(
     val cx: Float,
@@ -274,7 +298,7 @@ private data class LayoutNode(
 )
 
 private fun buildLayout(node: TreeNode, depth: Int = 0, offset: Float = 0f): Pair<LayoutNode, Float> {
-    val cy = depth * V_STEP + NODE_H / 2f
+    val cy = depth * V_STEP + NODE_R
     return when (node) {
         is TreeNode.Leaf -> {
             LayoutNode(offset + H_STEP / 2f, cy, node.label, true, emptyList()) to H_STEP
@@ -303,91 +327,92 @@ private fun TreeCanvas(tree: TreeNode) {
     val density        = LocalDensity.current
 
     val canvasW = with(density) { (totalW + PADDING * 2).dp }
-    val canvasH = with(density) { ((depth - 1) * V_STEP + NODE_H + PADDING * 2).dp }
+    val canvasH = with(density) { ((depth - 1) * V_STEP + NODE_R * 2 + PADDING * 2).dp }
 
-    val colorNode = Color(0xFF3A8EFF)
-    val colorLeaf = Color(0xFF2ECC71)
-    val colorLine = Color(0xFF9E9E9E)
+    val colorNodeFill   = Color(0xFFFFFFFF)
+    val colorNodeStroke = Color(0xFF1E88E5)
+    val colorNodeText   = Color(0xFF0D47A1)
+    val colorLeafFill   = Color(0xFF43A047)
+    val colorLeafStroke = Color(0xFF2E7D32)
+    val colorLeafText   = Color.White
+    val colorLine       = Color(0xFF78909C)
+    val colorEdgeBg     = Color(0xFFF8F9FA)
+    val colorEdgeText   = Color(0xFF37474F)
 
-    val nodeStyle = TextStyle(color = Color(0xFF1A6FFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-    val edgeStyle = TextStyle(color = Color(0xFF1A6FFF), fontSize = 11.sp, textAlign = TextAlign.Center)
+    val splitStyle = TextStyle(color = colorNodeText, fontSize = 11.sp, fontWeight = FontWeight.Bold,   textAlign = TextAlign.Center)
+    val leafStyle  = TextStyle(color = colorLeafText, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+    val edgeStyle  = TextStyle(color = colorEdgeText, fontSize = 10.sp, textAlign = TextAlign.Center)
 
     Canvas(modifier = Modifier.size(canvasW, canvasH)) {
-        val pad = PADDING.dp.toPx()
-        val nW  = NODE_W.dp.toPx()
-        val nH  = NODE_H.dp.toPx()
+        val pad  = PADDING.dp.toPx()
+        val r    = NODE_R.dp.toPx()
+        val sw   = 1.5.dp.toPx()
+        val maxW = (r * 1.75f).toInt()
 
         fun drawNode(node: LayoutNode) {
             val cx = node.cx.dp.toPx() + pad
             val cy = node.cy.dp.toPx() + pad
 
-            if (node.children.isNotEmpty()) {
-                val parentBottom = cy + nH / 2f
-                val firstChildTop = node.children.first().second.cy.dp.toPx() + pad - nH / 2f
-                val forkY = parentBottom + (firstChildTop - parentBottom) * 0.38f
+            for ((edgeLabel, child) in node.children) {
+                val ccx = child.cx.dp.toPx() + pad
+                val ccy = child.cy.dp.toPx() + pad
 
-                drawLine(colorLine, Offset(cx, parentBottom), Offset(cx, forkY), strokeWidth = 2.dp.toPx())
+                val dx = ccx - cx
+                val dy = ccy - cy
+                val dist = sqrt(dx * dx + dy * dy)
+                val nx = dx / dist
+                val ny = dy / dist
 
-                if (node.children.size > 1) {
-                    val leftX  = node.children.first().second.cx.dp.toPx() + pad
-                    val rightX = node.children.last().second.cx.dp.toPx() + pad
-                    drawLine(colorLine, Offset(leftX, forkY), Offset(rightX, forkY), strokeWidth = 2.dp.toPx())
-                }
+                val startX = cx + nx * r
+                val startY = cy + ny * r
+                val endX   = ccx - nx * r
+                val endY   = ccy - ny * r
 
-                for ((edgeLabel, child) in node.children) {
-                    val ccx   = child.cx.dp.toPx() + pad
-                    val cTop  = child.cy.dp.toPx() + pad - nH / 2f
-                    val arrow = 6.dp.toPx()
+                drawLine(colorLine, Offset(startX, startY), Offset(endX, endY), strokeWidth = sw)
 
-                    drawLine(colorLine, Offset(ccx, forkY), Offset(ccx, cTop), strokeWidth = 2.dp.toPx())
+                val al  = 7.dp.toPx()
+                val aw  = 0.32f
+                val px  = -ny; val py = nx
+                drawPath(
+                    path = Path().apply {
+                        moveTo(endX, endY)
+                        lineTo(endX - nx * al + px * al * aw, endY - ny * al + py * al * aw)
+                        lineTo(endX - nx * al - px * al * aw, endY - ny * al - py * al * aw)
+                        close()
+                    },
+                    color = colorLine, style = Fill
+                )
 
-                    drawPath(
-                        path = Path().apply {
-                            moveTo(ccx, cTop)
-                            lineTo(ccx - arrow, cTop - arrow * 1.4f)
-                            lineTo(ccx + arrow, cTop - arrow * 1.4f)
-                            close()
-                        },
-                        color = colorLine,
-                        style = Fill
-                    )
-
-                    val edgeText   = DecisionTreeData.valueLabel(edgeLabel)
-                    val edgeMeasured = textMeasurer.measure(
-                        edgeText, edgeStyle,
-                        constraints = Constraints(maxWidth = (H_STEP.dp.toPx()).toInt())
-                    )
-                    val labelMidY = (forkY + cTop) / 2f
-                    drawText(
-                        edgeMeasured,
-                        topLeft = Offset(
-                            ccx - edgeMeasured.size.width / 2f,
-                            labelMidY - edgeMeasured.size.height / 2f
-                        )
-                    )
-                }
+                val midX = (startX + endX) / 2f
+                val midY = (startY + endY) / 2f
+                val edgeMeasured = textMeasurer.measure(
+                    DecisionTreeData.valueLabel(edgeLabel), edgeStyle,
+                    constraints = Constraints(maxWidth = (H_STEP.dp.toPx() * 1.1f).toInt())
+                )
+                val eph = 4.dp.toPx(); val epv = 2.dp.toPx()
+                drawRoundRect(
+                    color = colorEdgeBg,
+                    topLeft = Offset(midX - edgeMeasured.size.width / 2f - eph, midY - edgeMeasured.size.height / 2f - epv),
+                    size    = Size(edgeMeasured.size.width + eph * 2f, edgeMeasured.size.height + epv * 2f),
+                    cornerRadius = CornerRadius(5.dp.toPx())
+                )
+                drawText(edgeMeasured, topLeft = Offset(midX - edgeMeasured.size.width / 2f, midY - edgeMeasured.size.height / 2f))
             }
 
-            drawRoundRect(
-                color = if (node.isLeaf) colorLeaf else colorNode,
-                topLeft = Offset(cx - nW / 2f, cy - nH / 2f),
-                size = Size(nW, nH),
-                cornerRadius = CornerRadius(12.dp.toPx())
+            drawCircle(Color(0x1A000000), radius = r + 2.dp.toPx(), center = Offset(cx + 1.5.dp.toPx(), cy + 2.5.dp.toPx()))
+
+            drawCircle(color = if (node.isLeaf) colorLeafFill else colorNodeFill, radius = r, center = Offset(cx, cy))
+
+            drawCircle(
+                color = if (node.isLeaf) colorLeafStroke else colorNodeStroke,
+                radius = r, center = Offset(cx, cy),
+                style  = Stroke(width = if (node.isLeaf) 1.5.dp.toPx() else 2.dp.toPx())
             )
 
-            val displayText = if (node.isLeaf) DecisionTreeData.placeLabel(node.label)
-                              else DecisionTreeData.featureLabel(node.label)
-            val measured = textMeasurer.measure(
-                displayText, nodeStyle,
-                constraints = Constraints(maxWidth = nW.toInt())
-            )
-            drawText(
-                measured,
-                topLeft = Offset(
-                    cx - measured.size.width / 2f,
-                    cy - measured.size.height / 2f
-                )
-            )
+            val label   = if (node.isLeaf) DecisionTreeData.placeLabel(node.label) else DecisionTreeData.featureLabel(node.label)
+            val style   = if (node.isLeaf) leafStyle else splitStyle
+            val measured = textMeasurer.measure(label, style, constraints = Constraints(maxWidth = maxW))
+            drawText(measured, topLeft = Offset(cx - measured.size.width / 2f, cy - measured.size.height / 2f))
 
             for ((_, child) in node.children) drawNode(child)
         }
@@ -405,9 +430,15 @@ private fun StatCell(label: String, value: String) {
 }
 
 @Composable
-private fun LegendItem(color: Color, text: String) {
+private fun LegendItem(fill: Color, stroke: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(color))
+        Box(
+            Modifier
+                .size(14.dp)
+                .clip(CircleShape)
+                .background(fill)
+                .border(1.5.dp, stroke, CircleShape)
+        )
         Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

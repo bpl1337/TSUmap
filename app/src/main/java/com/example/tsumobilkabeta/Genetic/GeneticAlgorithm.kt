@@ -11,22 +11,22 @@ data class Route(
     val pathSegments: List<List<GridNode>>
 )
 
-class GeneticAlgorithm(
+class GeneticAlgorithm (
     private val data: PrecomputedData,
     private val requiredItems: Set<String>,
     val totalGenerations: Int = 250,
     private val populationSize: Int = 120,
     private val mutationRate: Double = 0.18,
     private val eliteCount: Int = 12,
-    private val walkingSpeedKmH: Double = 5.0
+    private val walkingSpeedKmH: Double = 5.0,
+    private val startHour: Int = 9,
+    private val startMinute: Int = 0
 ) {
     var bestRoute: Route? = null
         private set
     var currentGeneration: Int = 0
         private set
-
     var onGenerationUpdate: ((Route, Int) -> Unit)? = null
-
     private val n = data.establishments.size
 
     fun run(): Route? {
@@ -93,24 +93,40 @@ class GeneticAlgorithm(
         val nodeSeq = listOf(0) + visitedIdx.map { it + 1 }
 
         var totalDist = 0.0
+        var fitness = 0.0
+        var currentTimeMin = startHour * 60 + startMinute
         val segments = mutableListOf<List<GridNode>>()
 
         for (i in 0 until nodeSeq.size - 1) {
             val from = nodeSeq[i]; val to = nodeSeq[i + 1]
             val d = data.distMatrix[from][to]
-            totalDist += if (d >= Double.MAX_VALUE / 2) 500_000.0 else d
+            val unreachable = d >= Double.MAX_VALUE / 2
+            totalDist += if (unreachable) 500_000.0 else d
+            if (unreachable) fitness += 300_000.0
+
             val path = data.pathMatrix[from][to]
             segments.add(path ?: listOf(data.cells[from], data.cells[to]))
+
+            val travelMin = if (unreachable) 60
+                            else ((d / 1000.0 / walkingSpeedKmH) * 60.0).toInt()
+            currentTimeMin += travelMin
+
+            val est = data.establishments[visitedIdx[i]]
+            val arrHour = (currentTimeMin / 60) % 24
+            val arrMin  = currentTimeMin % 60
+
+            if (!est.isOpenAt(arrHour, arrMin)) {
+                fitness += 200_000.0
+            } else {
+                val minLeft = est.minutesUntilClose(arrHour, arrMin)
+                if (minLeft < 15) fitness += 50_000.0
+            }
+
+            currentTimeMin += 3
         }
 
         val totalTimeMin = (totalDist / 1000.0 / walkingSpeedKmH) * 60.0 + visitedIdx.size * 3.0
-
-        var fitness = totalDist
-
-        for (i in 0 until nodeSeq.size - 1) {
-            val d = data.distMatrix[nodeSeq[i]][nodeSeq[i + 1]]
-            if (d >= Double.MAX_VALUE / 2) fitness += 300_000.0
-        }
+        fitness += totalDist
 
         return Route(visitedIdx.map { data.establishments[it] }, fitness, totalDist, totalTimeMin, segments)
     }
