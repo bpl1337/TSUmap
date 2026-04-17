@@ -130,7 +130,8 @@ fun DecisionTreeScreen() {
                     dataset = ds
                     val built = buildTree(ds)
                     tree = built
-                    pruned = prune(built, ds.rows, ds.target)
+                    val evalRows = ds.rows.filterIndexed { i, _ -> i % 2 == 0 }.ifEmpty { ds.rows }
+                    pruned = prune(built, evalRows, ds.target)
                     error = null
                     phase = Phase.TREE
                 } catch (e: Exception) {
@@ -232,7 +233,7 @@ private fun TreeScreen(
 ) {
     val active = if (usePruned && pruned != null) pruned else tree
     val savings =
-        if (pruned != null && tree != pruned) 100 - nodeCount(pruned) * 100 / nodeCount(tree) else 0
+        if (pruned != null && nodeCount(pruned) < nodeCount(tree)) 100 - nodeCount(pruned) * 100 / nodeCount(tree) else 0
 
     Column(
         modifier = Modifier
@@ -260,7 +261,7 @@ private fun TreeScreen(
                     StatCell("Узлов", nodeCount(active).toString())
                     if (savings > 0) StatCell("Сжатие", "-$savings%")
                 }
-                if (pruned != null && tree != pruned) {
+                if (pruned != null && nodeCount(pruned) < nodeCount(tree)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -284,6 +285,7 @@ private fun TreeScreen(
         }
         var scale by remember { mutableStateOf(1f) }
         var panOffset by remember { mutableStateOf(Offset.Zero) }
+        androidx.compose.runtime.LaunchedEffect(usePruned) { scale = 1f; panOffset = Offset.Zero }
 
         Box(
             modifier = Modifier
