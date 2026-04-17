@@ -305,15 +305,16 @@ private fun TreeScreen(
                         )
                     }
                 }) {
-            Box(modifier = Modifier
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = panOffset.x
-                    translationY = panOffset.y
-                    transformOrigin = TransformOrigin(0f, 0f)
-                }
-                .padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = panOffset.x
+                        translationY = panOffset.y
+                        transformOrigin = TransformOrigin(0f, 0f)
+                    }
+                    .padding(16.dp)) {
                 TreeCanvas(active)
             }
         }

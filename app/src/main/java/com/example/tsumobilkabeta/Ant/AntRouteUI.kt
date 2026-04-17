@@ -100,6 +100,7 @@ fun AntRoutePanel(viewModel: AntViewModel) {
                 AntPhase.COMPUTING -> ComputingPanel(onCancel = { viewModel.resetResult() })
                 AntPhase.RESULT -> TspResultPanel(viewModel)
             }
+
             AntMode.COWORKING -> when (phase) {
                 AntPhase.SELECT -> CoworkingSelectPanel(viewModel)
                 AntPhase.COMPUTING -> ComputingPanel(onCancel = { viewModel.resetResult() })
@@ -120,7 +121,9 @@ private fun TspSelectPanel(vm: AntViewModel) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Button(
             onClick = { vm.requestStartPoint() },
-            modifier = Modifier.fillMaxWidth().height(38.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(38.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (startPt != null) Green else OrangeDark,
@@ -168,7 +171,9 @@ private fun TspSelectPanel(vm: AntViewModel) {
         Spacer(Modifier.height(4.dp))
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 260.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             items(places, key = { it.id }) { place ->
@@ -216,8 +221,12 @@ private fun TspSelectPanel(vm: AntViewModel) {
         Spacer(Modifier.height(6.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    RoundedCornerShape(6.dp)
+                )
                 .padding(horizontal = 10.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -234,13 +243,17 @@ private fun TspSelectPanel(vm: AntViewModel) {
         Spacer(Modifier.height(6.dp))
 
         if (error != null) {
-            Text(error!!, color = MaterialTheme.colorScheme.error, fontSize = 11.sp,
-                modifier = Modifier.padding(bottom = 4.dp))
+            Text(
+                error!!, color = MaterialTheme.colorScheme.error, fontSize = 11.sp,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
         }
 
         Button(
             onClick = { vm.buildTspRoute() },
-            modifier = Modifier.fillMaxWidth().height(40.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp),
             shape = RoundedCornerShape(8.dp),
             enabled = selected.isNotEmpty() && startPt != null,
             colors = ButtonDefaults.buttonColors(
@@ -265,7 +278,9 @@ private fun CoworkingSelectPanel(vm: AntViewModel) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Button(
             onClick = { vm.requestStartPoint() },
-            modifier = Modifier.fillMaxWidth().height(38.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(38.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (startPt != null) Green else OrangeDark,
@@ -281,12 +296,21 @@ private fun CoworkingSelectPanel(vm: AntViewModel) {
 
         Spacer(Modifier.height(8.dp))
 
-        Text("Количество студентов:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = DarkText)
+        Text(
+            "Количество студентов:",
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            color = DarkText
+        )
         Spacer(Modifier.height(4.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    RoundedCornerShape(8.dp)
+                )
                 .border(1.dp, GrayBorder, RoundedCornerShape(8.dp))
                 .padding(4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -373,7 +397,9 @@ private fun CoworkingSelectPanel(vm: AntViewModel) {
         Spacer(Modifier.height(4.dp))
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 240.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             items(CoworkingDatabase.locations, key = { it.id }) { loc ->
@@ -415,13 +441,17 @@ private fun CoworkingSelectPanel(vm: AntViewModel) {
         Spacer(Modifier.height(6.dp))
 
         if (error != null) {
-            Text(error!!, color = MaterialTheme.colorScheme.error, fontSize = 11.sp,
-                modifier = Modifier.padding(bottom = 4.dp))
+            Text(
+                error!!, color = MaterialTheme.colorScheme.error, fontSize = 11.sp,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
         }
 
         Button(
             onClick = { vm.buildCoworkingRoute() },
-            modifier = Modifier.fillMaxWidth().height(40.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp),
             shape = RoundedCornerShape(8.dp),
             enabled = startPt != null && students > 0 && selected.isNotEmpty(),
             colors = ButtonDefaults.buttonColors(
@@ -436,7 +466,9 @@ private fun CoworkingSelectPanel(vm: AntViewModel) {
 @Composable
 private fun ComputingPanel(onCancel: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         CircularProgressIndicator(
@@ -460,7 +492,9 @@ private fun ComputingPanel(onCancel: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         OutlinedButton(
             onClick = onCancel,
-            modifier = Modifier.fillMaxWidth().height(36.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp),
             shape = RoundedCornerShape(8.dp)
         ) { Text("Отмена", fontSize = 12.sp) }
     }
@@ -471,7 +505,9 @@ private fun TspResultPanel(vm: AntViewModel) {
     val places by vm.resultPlaces
     val dist by vm.resultDistance
 
-    Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .verticalScroll(rememberScrollState())) {
         Text(
             "Маршрут построен!",
             fontWeight = FontWeight.Bold,
@@ -489,15 +525,21 @@ private fun TspResultPanel(vm: AntViewModel) {
         places.forEachIndexed { idx, place ->
             val color = Color(AntViewModel.LEG_COLORS[idx % AntViewModel.LEG_COLORS.size])
             Row(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(vertical = 2.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        RoundedCornerShape(6.dp)
+                    )
                     .border(1.dp, GrayBorder, RoundedCornerShape(6.dp))
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    modifier = Modifier.size(24.dp).background(color, CircleShape),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(color, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -515,7 +557,9 @@ private fun TspResultPanel(vm: AntViewModel) {
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = { vm.resetResult() },
-            modifier = Modifier.fillMaxWidth().height(36.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.secondary,
@@ -532,7 +576,9 @@ private fun CoworkingResultPanel(vm: AntViewModel) {
 
     val occupied = result.assignments.filter { it.studentsAssigned > 0 }
 
-    Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .verticalScroll(rememberScrollState())) {
         Text(
             "Места распределены!",
             fontWeight = FontWeight.Bold,
@@ -553,15 +599,21 @@ private fun CoworkingResultPanel(vm: AntViewModel) {
                 val fillRatio = a.studentsAssigned.toFloat() / a.location.capacity.coerceAtLeast(1)
 
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .padding(vertical = 2.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            RoundedCornerShape(8.dp)
+                        )
                         .border(1.dp, GrayBorder, RoundedCornerShape(8.dp))
                         .padding(horizontal = 10.dp, vertical = 8.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier.size(10.dp).background(color, CircleShape)
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(color, CircleShape)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
@@ -583,7 +635,9 @@ private fun CoworkingResultPanel(vm: AntViewModel) {
 
                     LinearProgressIndicator(
                         progress = { fillRatio.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(6.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
                             .clip(RoundedCornerShape(3.dp)),
                         color = if (fillRatio > 1f) MaterialTheme.colorScheme.error else color,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
@@ -613,7 +667,9 @@ private fun CoworkingResultPanel(vm: AntViewModel) {
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = { vm.resetResult() },
-            modifier = Modifier.fillMaxWidth().height(36.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.secondary,
@@ -628,7 +684,9 @@ private fun placeCategory(name: String): Color = when {
     "памятник" in name.lowercase() || "Памятник" in name -> Color(0xFF9CA3AF)
     "сад" in name.lowercase() || "роща" in name.lowercase() || "озеро" in name.lowercase()
         -> Color(0xFF22C55E)
+
     "корпус" in name.lowercase() || "центр" in name.lowercase()
         -> Color(0xFFF59E0B)
+
     else -> Color(0xFF8B5CF6)
 }

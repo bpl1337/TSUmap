@@ -38,7 +38,11 @@ fun ClusteringPanel(viewModel: ClusteringViewModel?) {
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("Кластеризация", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+            "Кластеризация",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
         Text("Количество кластеров: ${viewModel.clusterCount}")
         Text("Режим: ${modeLabel(viewModel.mode)}")
 

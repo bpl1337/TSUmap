@@ -118,9 +118,11 @@ private fun SelectionPanel(
         Text("Выберите блюда:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Spacer(Modifier.height(4.dp))
 
-        LazyColumn(modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 300.dp)) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 300.dp)
+        ) {
             for ((category, items) in categoryGroups) {
                 item {
                     Text(
@@ -204,10 +206,17 @@ private fun ProgressPanel(
     extra: String? = null,
     onCancel: () -> Unit
 ) {
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(4.dp)) {
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(4.dp)
+    ) {
+        Text(
+            title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.primary
+        )
         Spacer(Modifier.height(6.dp))
         LinearProgressIndicator(
             progress = { progress.coerceIn(0f, 1f) },
@@ -249,7 +258,11 @@ private fun ResultPanel(
             .verticalScroll(rememberScrollState())
     ) {
         if (route == null) {
-            Text("Маршрут не найден", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+            Text(
+                "Маршрут не найден",
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.Bold
+            )
         } else {
             Text(
                 "Маршрут построен!", fontWeight = FontWeight.Bold, fontSize = 14.sp,
@@ -274,19 +287,31 @@ private fun ResultPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 2.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            RoundedCornerShape(6.dp)
+                        )
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant,
+                            RoundedCornerShape(6.dp)
+                        )
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.Top
                 ) {
                     Box(
                         modifier = Modifier
                             .size(22.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp)),
+                            .background(
+                                MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(11.dp)
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "${idx + 1}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 11.sp,
+                            "${idx + 1}",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -294,7 +319,11 @@ private fun ResultPanel(
                     Column {
                         Text(est.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                         if (items.isNotEmpty())
-                            Text(items, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Text(
+                                items,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         Text(
                             "${est.openHour}:${"%02d".format(est.openMinute)} — " +
                                     "${est.closeHour}:${"%02d".format(est.closeMinute)}",
@@ -313,8 +342,8 @@ private fun ResultPanel(
                 .height(36.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary
             )
         ) { Text("Заново", fontSize = 12.sp) }
     }
