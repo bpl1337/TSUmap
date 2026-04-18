@@ -28,6 +28,10 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".AI.AIDrawingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TSUmobilkaBETA.Screen.NoTitleBar" />
+        <activity
             android:name=".AI.AIMainActivity"
             android:exported="false"
             android:theme="@style/Theme.TSUmobilkaBETA.Screen.NoTitleBar" />
