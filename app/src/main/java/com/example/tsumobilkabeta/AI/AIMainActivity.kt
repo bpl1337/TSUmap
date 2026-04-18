@@ -28,7 +28,6 @@ import java.io.File
 import kotlin.math.roundToInt
 
 private const val ADMIN_MODE = false
-
 class AIMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
