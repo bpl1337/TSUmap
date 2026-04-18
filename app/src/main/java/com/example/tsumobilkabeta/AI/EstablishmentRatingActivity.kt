@@ -12,8 +12,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,8 +21,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -52,13 +52,13 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.tsumobilkabeta.Clustering.model.EstablishmentRatingStore
 import com.example.tsumobilkabeta.Genetic.FoodDatabase
 import com.example.tsumobilkabeta.Genetic.FoodEstablishment
 import com.example.tsumobilkabeta.floatArrayToBitmap
 import com.example.tsumobilkabeta.processDrawing2px
 import com.example.tsumobilkabeta.ui.theme.TSUMapTheme
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -86,8 +86,11 @@ class EstablishmentRatingActivity : ComponentActivity() {
                 return
             }
 
+        val isDark = getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
+            .getBoolean("is_dark_theme", false)
+
         setContent {
-            TSUMapTheme {
+            TSUMapTheme(darkTheme = isDark) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

@@ -1,7 +1,7 @@
 package com.example.tsumobilkabeta.AI
 
+import android.content.Context
 import android.os.Bundle
-import com.example.tsumobilkabeta.processDrawing2px
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -22,6 +22,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.tsumobilkabeta.Genetic.FoodDatabase
 import com.example.tsumobilkabeta.Genetic.FoodEstablishment
+import com.example.tsumobilkabeta.processDrawing2px
 import com.example.tsumobilkabeta.ui.theme.TSUMapTheme
 import java.io.File
 import kotlin.math.roundToInt
@@ -38,8 +39,11 @@ class AIMainActivity : ComponentActivity() {
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
+        val isDark = getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
+            .getBoolean("is_dark_theme", false)
+
         setContent {
-            TSUMapTheme {
+            TSUMapTheme(darkTheme = isDark) {
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {

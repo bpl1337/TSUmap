@@ -1,5 +1,6 @@
 package com.example.tsumobilkabeta
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -44,9 +45,19 @@ class MainActivity : ComponentActivity() {
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         controller.hide(WindowInsetsCompat.Type.systemBars())
+
+        val themePrefs = getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
+
         setContent {
             val systemDark = isSystemInDarkTheme()
-            var isDarkTheme by rememberSaveable { mutableStateOf(systemDark) }
+            var isDarkTheme by rememberSaveable {
+                mutableStateOf(
+                    themePrefs.getBoolean(
+                        "is_dark_theme",
+                        systemDark
+                    )
+                )
+            }
 
             TSUMapTheme(darkTheme = isDarkTheme) {
                 Surface(
@@ -55,7 +66,11 @@ class MainActivity : ComponentActivity() {
                     MapScreen(
                         modifier = Modifier.fillMaxSize(),
                         isDarkTheme = isDarkTheme,
-                        onThemeToggle = { isDarkTheme = !isDarkTheme }
+                        onThemeToggle = {
+                            val newDark = !isDarkTheme
+                            isDarkTheme = newDark
+                            themePrefs.edit().putBoolean("is_dark_theme", newDark).apply()
+                        }
                     )
                 }
             }

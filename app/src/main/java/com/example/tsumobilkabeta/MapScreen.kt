@@ -63,15 +63,18 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.tsumobilkabeta.AI.AIMainActivity
+import com.example.tsumobilkabeta.AI.AIDrawingActivity
 import com.example.tsumobilkabeta.AStar.AStarOverlayView
 import com.example.tsumobilkabeta.Ant.AntRoutePanel
 import com.example.tsumobilkabeta.Ant.AntViewModel
+import com.example.tsumobilkabeta.Clustering.UI.ClusteringPanel
 import com.example.tsumobilkabeta.Clustering.UI.ClusteringViewModel
 import com.example.tsumobilkabeta.DecisionTree.DecisionTreeActivity
 import com.example.tsumobilkabeta.Genetic.FoodRoutePanel
 import com.example.tsumobilkabeta.Genetic.GeneticFoodViewModel
-import com.example.tsumobilkabeta.ui.theme.*
+import com.example.tsumobilkabeta.ui.theme.BorderColor
+import com.example.tsumobilkabeta.ui.theme.BorderFill
+import com.example.tsumobilkabeta.ui.theme.PathColor
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.geometry.LinearRing
 import com.yandex.mapkit.geometry.Point
@@ -86,7 +89,6 @@ import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.map.MapObject
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
-import com.example.tsumobilkabeta.Clustering.UI.ClusteringPanel
 
 
 @Composable
@@ -548,7 +550,7 @@ fun MapScreen(
                     RouteAlgorithm.ANOTHER -> context.startActivity(
                         Intent(
                             context,
-                            AIMainActivity::class.java
+                            AIDrawingActivity::class.java
                         )
                     )
 

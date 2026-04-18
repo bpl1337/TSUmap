@@ -1,16 +1,18 @@
 package com.example.tsumobilkabeta.DecisionTree
 
+import android.content.Context
 import android.os.Bundle
-import kotlin.math.sqrt
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,8 +53,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -63,15 +68,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.tsumobilkabeta.ui.theme.TSUMapTheme
+import kotlin.math.sqrt
 
 class DecisionTreeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,8 +85,11 @@ class DecisionTreeActivity : ComponentActivity() {
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
+        val isDark = getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
+            .getBoolean("is_dark_theme", false)
+
         setContent {
-            TSUMapTheme {
+            TSUMapTheme(darkTheme = isDark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     DecisionTreeScreen()
                 }
@@ -233,7 +237,9 @@ private fun TreeScreen(
 ) {
     val active = if (usePruned && pruned != null) pruned else tree
     val savings =
-        if (pruned != null && nodeCount(pruned) < nodeCount(tree)) 100 - nodeCount(pruned) * 100 / nodeCount(tree) else 0
+        if (pruned != null && nodeCount(pruned) < nodeCount(tree)) 100 - nodeCount(pruned) * 100 / nodeCount(
+            tree
+        ) else 0
 
     Column(
         modifier = Modifier
